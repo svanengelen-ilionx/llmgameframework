@@ -1,6 +1,6 @@
 # Game Authoring Agent Guide
 
-This guide is written for AI agents that need to implement a new game on top of the `llmgames` framework. It is meant to be fetchable from GitHub and usable without reading `PLAN.MD`.
+This guide is written for AI agents that need to implement a new game on top of the `llmgames` framework.
 
 Fetch the raw guide from GitHub with:
 
@@ -12,29 +12,65 @@ Replace `<owner>` and `<repo>` with the actual GitHub repository coordinates. If
 
 ## Goal
 
-Create a complete, self-contained game project that is pleasant for a human end user to discover and start, while using `llmgames` as the game-engine framework.
+Create a complete, standalone game project that is pleasant for a human end user to discover and start, while using `llmgames` as an installed framework dependency.
 
-A generated game should normally live outside the reusable framework package:
+A generated game should not require the human user to clone or edit the `llmgames` framework repository. The agent should create a new project folder for the game and install `llmgames` from GitHub.
+
+For example, a prompt like this should be enough:
 
 ```text
-games/
-  my-game/
+Make a rock-paper-scissors game using this guide: https://raw.githubusercontent.com/<owner>/<repo>/main/docs/game-authoring-agent-guide.md. It should be two AIs fighting each other and it should be shown on a website hosted locally.
+```
+
+The expected result is a local game project similar to:
+
+```text
+rock-paper-scissors/
     README.md
+    pyproject.toml
     game.py
     run.py
     tests/
-      test_game.py
+        test_game.py
     frontend/
-      ... optional website frontend files ...
+        ... optional website frontend files ...
 ```
 
-Use `llmgames/games/` only when adding a maintained built-in framework game. For most AI-authored games, keep the game backend, runner, tests, and optional frontend together under `games/<game-slug>/` so a human can start from one obvious folder.
+Use the `llmgames` repository itself only when changing the framework or adding a maintained built-in framework game. For normal AI-authored games, keep the game backend, runner, tests, and optional frontend together in the standalone game project.
 
-The human end-user path should be clear from `games/<game-slug>/README.md`. The README must explain the game, the rules, and the exact command to run it locally.
+The human end-user path should be clear from `README.md`. The README must explain the game, the rules, setup, and the exact command to run it locally.
 
-## Files To Inspect First
+## Dependency Setup
 
-Before implementing a game, inspect these files in the target repository:
+`llmgames` is not assumed to be published to PyPI. Add it as a direct GitHub dependency in the generated game's `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rock-paper-scissors"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "llmgames @ git+https://github.com/<owner>/<repo>.git@main",
+]
+```
+
+Replace `<owner>`, `<repo>`, and `main` with the same repository coordinates used for the raw guide URL.
+
+The README should include setup commands like:
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -e .
+```
+
+## Framework Files To Inspect
+
+Before implementing a game, inspect these framework files. The agent may inspect them from the installed `llmgames` package, from a temporary dependency checkout created by the package manager, or from GitHub raw URLs. The human-facing game project does not need to be inside the `llmgames` repository.
 
 - `llmgames/core/contracts.py`: public data contracts and protocols.
 - `llmgames/core/authoring.py`: `BaseGameModule` and the `@action` decorator.
@@ -42,35 +78,84 @@ Before implementing a game, inspect these files in the target repository:
 - `llmgames/core/controllers.py`: `ScriptedController` and `intent` test helper.
 - `llmgames/core/schemas.py`: small reusable input schema helpers.
 - `llmgames/core/views.py`: public/player view contracts.
+- `llmgames/testing.py`: scripted-game test helpers.
 - `llmgames/games/split_or_steal.py`: canonical built-in reference game.
 - `tests/test_authoring.py`: minimal external game example using the public authoring API.
 - `tests/test_split_or_steal.py`: scripted tests for the built-in reference game.
 
-Do not depend on `PLAN.MD`; it is historical planning material.
+Some built-in framework files use internal import paths such as `llmgames.core.contracts`. Generated standalone games should prefer the imports shown in the next section unless a name is documented there as requiring an internal path.
 
-## Required Game Folder
+## Import Reference
 
-Create a game folder named with a lowercase kebab-case slug:
+The top-level `llmgames` package exports the stable authoring and runtime names most games need:
+
+```python
+from llmgames import (
+    ActionContext,
+    ActionResult,
+    BaseGameModule,
+    Engine,
+    Event,
+    GameInfo,
+    GameResult,
+    GameView,
+    Message,
+    Observation,
+    Player,
+    RunConfig,
+    ViewRequest,
+    action,
+    empty_schema,
+    group_message,
+    private_message,
+    public_message,
+    target_schema,
+    visible_messages,
+)
+```
+
+`RunSummary` and engine exceptions are not top-level exports. Import them from `llmgames.core.engine` when annotating summaries or asserting engine errors in tests:
+
+```python
+from llmgames.core.engine import EngineError, InvalidIntentError, LimitExceededError, RunSummary
+```
+
+Scripted controller helpers are not top-level exports. Import them from their module:
+
+```python
+from llmgames.core.controllers import ScriptedController, intent
+```
+
+Testing convenience helpers are available from `llmgames.testing`:
+
+```python
+from llmgames.testing import assert_terminal, find_events, run_scripted_game
+```
+
+## Required Project Folder
+
+Create a standalone project folder named with a lowercase kebab-case slug:
 
 ```text
-games/<game-slug>/
+<game-slug>/
 ```
 
 Recommended contents:
 
 ```text
-games/<game-slug>/
-  README.md          # Human-facing rules and run instructions.
-  game.py            # GameModule implementation.
-  run.py             # One-command local runner for this game.
-  tests/
-    test_game.py     # ScriptedController tests for the game.
+<game-slug>/
+    README.md          # Human-facing rules and run instructions.
+    pyproject.toml     # Installs llmgames from GitHub.
+    game.py            # GameModule implementation.
+    run.py             # One-command local runner for this game.
+    tests/
+        test_game.py     # ScriptedController tests for the game.
 ```
 
 Optional contents:
 
 ```text
-games/<game-slug>/
+<game-slug>/
   frontend/          # Optional website frontend owned by this game.
   assets/            # Optional game-specific static assets.
 ```
@@ -126,7 +211,9 @@ class MyGameState:
     scores: dict[str, int] = field(default_factory=dict)
 ```
 
-The engine stores the live state object. Action handlers may mutate this state directly and return `ActionResult(success=True, events=[...])`. `ActionResult.state_patch` is also supported by the engine for shallow field updates, but direct mutation is the common style in the current codebase.
+The engine stores the live state object. Action handlers may mutate this state directly and return `ActionResult(success=True, events=[...])`. This is the common style in the current codebase.
+
+`ActionResult.state_patch` is also supported, but only for shallow field updates: the engine calls `.update()` for dict states and `setattr(state, key, value)` for object states. Do not use `state_patch` for nested updates or complex state transitions. Do not combine `state_patch` with frozen dataclass state; `setattr` will fail on frozen instances.
 
 ## Game Info
 
@@ -163,14 +250,17 @@ Do not use system randomness here. If setup needs randomness, create determinist
 `get_observation` returns the state visible to one player/controller:
 
 ```python
-def get_observation(self, state: MyGameState, player_id: str) -> Observation:
-    return Observation(
-        player_id=player_id,
-        rules=self.rules,
-        public={"phase": state.phase, "scores": dict(state.scores)},
-        private={"your_choice": state.choices.get(player_id)},
-        messages=[],
-    )
+class MyGame(BaseGameModule):
+    rules = "Describe the rules visible to every player."
+
+    def get_observation(self, state: MyGameState, player_id: str) -> Observation:
+        return Observation(
+            player_id=player_id,
+            rules=self.rules,
+            public={"phase": state.phase, "scores": dict(state.scores)},
+            private={"your_choice": state.choices.get(player_id)},
+            messages=[],
+        )
 ```
 
 Use observations for controller decisions, including LLM controllers. Observations should include:
@@ -249,9 +339,11 @@ The engine rejects:
 - inputs that do not match the action schema
 - action results where `success` is false
 
+These rejections are fatal for the current run: the engine raises `InvalidIntentError` and `Engine.run()` does not return a normal `RunSummary`. Prevent routine illegal moves with `can_use` predicates and input schemas instead of returning `ActionResult(success=False)` from handlers.
+
 ## Input Schemas
 
-Every action needs an input schema. Use `empty_schema()` for actions with no input.
+Every action should have an input schema. If `input_schema` is omitted, `@action` defaults to an empty object schema, but explicit schemas are clearer for agents and frontends. Use `empty_schema()` for actions with no input.
 
 For non-empty actions, use a JSON-schema-like object with:
 
@@ -259,6 +351,8 @@ For non-empty actions, use a JSON-schema-like object with:
 - `properties`
 - `required` when fields are mandatory
 - `additionalProperties: False`
+
+Input validation is intentionally small and flat. The top-level action input must be an object. Field validation currently supports `type: "string"`, `type: "integer"`, `type: "boolean"`, `enum`, `minLength`, and `maxLength`. Nested object schemas, arrays, numbers, and null values are not deeply validated by the framework. If a game needs additional constraints, validate them inside the handler after the schema passes.
 
 Example:
 
@@ -279,6 +373,17 @@ Example:
 ```
 
 A frontend can use action names, descriptions, and input schemas to generate controls or validate input before submission. The backend remains authoritative.
+
+For actions that target another player, `target_schema()` is available from the top-level package:
+
+```python
+@action(
+    name="challenge",
+    description="Challenge another player.",
+    input_schema=target_schema(),
+    can_use="_can_challenge",
+)
+```
 
 ## Availability Predicates
 
@@ -312,13 +417,13 @@ return ActionResult(
 )
 ```
 
-Use failed results only for domain-level failures that should be reported as invalid intents by the engine:
+Reserve failed results for unrecoverable domain failures that should terminate the run as invalid intents:
 
 ```python
 return ActionResult(success=False, error="choice was already submitted")
 ```
 
-Prefer preventing illegal actions through `can_use` and input schemas. Use events for meaningful domain history: phase changes, submitted choices, messages, score resolution, or game end.
+This aborts the run with `InvalidIntentError`. Prefer preventing illegal actions through `can_use` and input schemas. Use events for meaningful domain history: phase changes, submitted choices, messages, score resolution, or game end.
 
 ## Terminal Conditions And Results
 
@@ -375,6 +480,8 @@ Use `Message` objects when the game has communication. Helpers are available fro
 
 Store messages on state and expose appropriate messages through observations and views.
 
+`ActionResult.messages` is currently not consumed by the engine. Returning `messages=[...]` does not store, route, trace, or expose messages by itself. If a message should affect the game or UI, append it to game state in the handler, then include it in observations and views. Returning the same message in `ActionResult.messages` is optional metadata only.
+
 ## Randomness
 
 Do not import and use `random` directly in game logic. Use `ActionContext.rng` inside action handlers so runs can be reproduced with `RunConfig(seed=...)`.
@@ -387,7 +494,7 @@ roll = context.rng.randint(1, 6)
 
 ## Runner Requirements
 
-`run.py` should be the easiest way for a human to start the game from the game folder. It may run scripted players, a small CLI loop, or a local server if a frontend exists.
+`run.py` should be the easiest way for a human to start the game from the project folder. It may run scripted players, AI players, a small CLI loop, or a local server if a frontend exists.
 
 At minimum, it should:
 
@@ -397,17 +504,41 @@ At minimum, it should:
 - run `Engine(game, RunConfig(...)).run()` or use `run_scripted_game`
 - print the final result clearly
 
+If using `run_scripted_game`, import it explicitly:
+
+```python
+from llmgames.testing import run_scripted_game
+```
+
 The README must show the exact command, for example:
 
 ```bash
-python games/my-game/run.py
+python run.py
 ```
 
-If the runner has optional dependencies, document setup commands in the game README.
+If the user asks for AI players, configure controllers using the available `llmgames` controller and LLM provider APIs. If real model calls require credentials, document the required environment variables and provide a deterministic fallback or scripted demo path so the project can still be verified locally.
+
+If the user asks for a locally hosted website, provide a local web start command and URL in the README. The guide does not prescribe the frontend stack, but the finished project must let the human start the website from the standalone project folder.
+
+If the runner has optional dependencies, document setup commands in the README.
+
+## Event Streaming And Tracing
+
+For live integrations, pass `on_event` to `RunConfig`. The callback receives each domain `Event` synchronously as the engine applies successful action results:
+
+```python
+streamed_events: list[Event] = []
+summary = Engine(
+    game,
+    RunConfig(players=players, controllers=controllers, on_event=streamed_events.append),
+).run()
+```
+
+Use `on_event` for simple real-time updates to a local server or frontend adapter. Use `RunSummary.events` after the run for the final domain event list. Use `RunSummary.trace_events` or a `RunConfig(recorder=...)` when a frontend or debug tool needs lower-level engine trace data such as turns, available actions, intents, and emitted views.
 
 ## Tests
 
-Add scripted tests under `games/<game-slug>/tests/test_game.py` or under the repository-level `tests/` folder with a clear game-specific name.
+Add tests under `tests/test_game.py` in the standalone game project.
 
 Test at least:
 
@@ -418,6 +549,38 @@ Test at least:
 - important view or observation data if a frontend will depend on it
 
 Use `ScriptedController` and `intent` for deterministic tests.
+
+Use `llmgames.testing` helpers to reduce boilerplate when useful:
+
+```python
+from llmgames.testing import assert_terminal, find_events, run_scripted_game
+```
+
+- `run_scripted_game(game, players, scripts, *, seed=None, max_turns=100, max_actions=500) -> RunSummary`: runs a game with `ScriptedController`s built from each player's intent script.
+- `assert_terminal(summary) -> None`: raises `AssertionError` if the run did not end in a terminal result.
+- `find_events(summary, event_type) -> list[Event]`: returns domain events from the summary matching the given type.
+
+Example using the helper:
+
+```python
+from llmgames import Player
+from llmgames.core.controllers import intent
+from llmgames.testing import assert_terminal, find_events, run_scripted_game
+
+from game import MyGame
+
+players = [Player("alice", "Alice"), Player("bob", "Bob")]
+summary = run_scripted_game(
+    MyGame(),
+    players,
+    {
+        "alice": [intent("ready")],
+        "bob": [intent("ready")],
+    },
+)
+assert_terminal(summary)
+assert find_events(summary, "player_ready")
+```
 
 Example:
 
@@ -460,11 +623,14 @@ A frontend implementation can derive these facts from the backend contracts:
 
 The frontend must treat the backend as authoritative for legal actions and results. It must not duplicate rules in a way that can diverge from the `GameModule`.
 
+When a user requests a locally hosted website, the agent should choose an appropriate frontend and local server approach for the standalone project. The website should use backend-derived game state, legal actions, action schemas, events, and results. The README must include the command to start it and the local URL to open.
+
 ## What Not To Do
 
 Do not:
 
-- edit `llmgames/games/` unless creating a maintained built-in framework game
+- require the human user to clone the `llmgames` repository just to create or run a game
+- edit the `llmgames` framework unless the user explicitly asks to change the framework itself
 - make the human user hunt through framework internals to start the game
 - skip `README.md` or omit exact run commands
 - call LLM APIs from a `GameModule`
@@ -483,24 +649,25 @@ Do not:
 
 Follow this checklist when creating a new game:
 
-1. Read this guide and inspect the files listed in "Files To Inspect First".
-2. Create `games/<game-slug>/`.
-3. Write `games/<game-slug>/README.md` for a human end user.
-4. Write `games/<game-slug>/game.py` with state, module class, actions, observations, views, terminal logic, and result logic.
-5. Write `games/<game-slug>/run.py` with a clear local start path.
-6. Add scripted tests.
-7. If adding a frontend, keep it in `games/<game-slug>/frontend/` unless the existing repo already has a stronger convention.
-8. Run the Python tests.
-9. Run any game-specific or frontend verification commands.
-10. Report changed files and verification results.
+1. Read this guide and inspect the framework files listed above.
+2. Create a standalone `<game-slug>/` project folder.
+3. Write `<game-slug>/pyproject.toml` with the GitHub `llmgames` dependency.
+4. Write `<game-slug>/README.md` for a human end user.
+5. Write `<game-slug>/game.py` with state, module class, actions, observations, views, terminal logic, and result logic.
+6. Write `<game-slug>/run.py` with a clear local start path.
+7. If the user asks for AI players, wire controllers to the available LLM/provider APIs or document required credentials and provide a verifiable fallback.
+8. If the user asks for a local website, add frontend/server files in the standalone project and document one start command plus the local URL.
+9. Add tests under `<game-slug>/tests/`.
+10. Run the Python tests.
+11. Run any game-specific or frontend verification commands.
+12. Report changed files, setup commands, start commands, local URLs, and verification results.
 
 ## Verification Commands
 
-For the current Python-only framework, run:
+For a standalone Python game project, run from the project root:
 
 ```bash
 python -m unittest discover -s tests
-python -m unittest discover -s games/<game-slug>/tests
 ```
 
-If the repository uses another test runner or a frontend build system, inspect project files and run the appropriate additional commands.
+If the standalone project uses another test runner or a frontend build system, inspect project files and run the appropriate additional commands.
