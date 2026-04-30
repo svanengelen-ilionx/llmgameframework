@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
+from llmgames.core.authoring import BaseGameModule, action
 from llmgames.core.contracts import (
     ActionContext,
-    ActionDefinition,
     ActionResult,
     Event,
     GameInfo,
@@ -32,7 +32,7 @@ class SplitOrStealState:
     max_messages: int = 6
 
 
-class SplitOrSteal:
+class SplitOrSteal(BaseGameModule):
     rules = (
         "Talk first, then each player chooses split or steal. "
         "If both split, both score 50. If one steals while the other splits, "
@@ -41,52 +41,6 @@ class SplitOrSteal:
 
     def __init__(self, max_messages: int = 6) -> None:
         self.max_messages = max_messages
-        self._actions = {
-            "send_message": ActionDefinition(
-                name="send_message",
-                description="Send a public message during the conversation phase.",
-                input_schema={
-                    "type": "object",
-                    "properties": {"text": {"type": "string", "minLength": 1, "maxLength": 500}},
-                    "required": ["text"],
-                    "additionalProperties": False,
-                },
-                can_use=self._can_talk,
-                handler=self._send_message,
-            ),
-            "ready": ActionDefinition(
-                name="ready",
-                description="Mark yourself ready to move from conversation to choice.",
-                input_schema={"type": "object", "properties": {}, "additionalProperties": False},
-                can_use=self._can_talk,
-                handler=self._ready,
-            ),
-            "end_turn": ActionDefinition(
-                name="end_turn",
-                description="Pass without sending a message.",
-                input_schema={"type": "object", "properties": {}, "additionalProperties": False},
-                can_use=self._can_talk,
-                handler=self._end_turn,
-            ),
-            "choose_split": ActionDefinition(
-                name="choose_split",
-                description="Choose to split the prize.",
-                input_schema={"type": "object", "properties": {}, "additionalProperties": False},
-                can_use=self._can_choose,
-                handler=self._choose_split,
-            ),
-            "choose_steal": ActionDefinition(
-                name="choose_steal",
-                description="Choose to steal the prize.",
-                input_schema={"type": "object", "properties": {}, "additionalProperties": False},
-                can_use=self._can_choose,
-                handler=self._choose_steal,
-            ),
-        }
-
-    @property
-    def actions(self) -> Mapping[str, ActionDefinition]:
-        return self._actions
 
     def get_info(self) -> GameInfo:
         return GameInfo(
@@ -123,9 +77,6 @@ class SplitOrSteal:
             messages=list(state.messages),
         )
 
-    def get_available_actions(self, state: SplitOrStealState, player_id: str) -> list[ActionDefinition]:
-        return [action for action in self.actions.values() if action.can_use(state, player_id)]
-
     def get_result(self, state: SplitOrStealState) -> GameResult:
         if not self.is_terminal(state):
             return GameResult(is_terminal=False, scores=dict(state.scores), reason="Game is still running")
@@ -150,6 +101,17 @@ class SplitOrSteal:
     def _can_choose(self, state: SplitOrStealState, player_id: str) -> bool:
         return state.phase == "choice" and player_id not in state.choices
 
+    @action(
+        name="send_message",
+        description="Send a public message during the conversation phase.",
+        input_schema={
+            "type": "object",
+            "properties": {"text": {"type": "string", "minLength": 1, "maxLength": 500}},
+            "required": ["text"],
+            "additionalProperties": False,
+        },
+        can_use="_can_talk",
+    )
     def _send_message(
         self,
         state: SplitOrStealState,
@@ -176,6 +138,11 @@ class SplitOrSteal:
             events.append(Event("choice_phase_started", "Message limit reached"))
         return ActionResult(success=True, events=events, messages=[message])
 
+    @action(
+        name="ready",
+        description="Mark yourself ready to move from conversation to choice.",
+        can_use="_can_talk",
+    )
     def _ready(
         self,
         state: SplitOrStealState,
@@ -190,6 +157,11 @@ class SplitOrSteal:
             events.append(Event("choice_phase_started", "All players are ready"))
         return ActionResult(success=True, events=events)
 
+    @action(
+        name="end_turn",
+        description="Pass without sending a message.",
+        can_use="_can_talk",
+    )
     def _end_turn(
         self,
         state: SplitOrStealState,
@@ -202,6 +174,11 @@ class SplitOrSteal:
             events=[Event("turn_ended", f"{player_id} ended their turn", {"player_id": player_id})],
         )
 
+    @action(
+        name="choose_split",
+        description="Choose to split the prize.",
+        can_use="_can_choose",
+    )
     def _choose_split(
         self,
         state: SplitOrStealState,
@@ -211,6 +188,11 @@ class SplitOrSteal:
     ) -> ActionResult:
         return self._choose(state, player_id, "split")
 
+    @action(
+        name="choose_steal",
+        description="Choose to steal the prize.",
+        can_use="_can_choose",
+    )
     def _choose_steal(
         self,
         state: SplitOrStealState,
