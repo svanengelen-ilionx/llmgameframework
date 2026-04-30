@@ -5,10 +5,8 @@ This guide is written for AI agents that need to implement a new game on top of 
 Fetch the raw guide from GitHub with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/docs/game-authoring-agent-guide.md
+curl -fsSL https://raw.githubusercontent.com/svanengelen-ilionx/llmgameframework/main/docs/game-authoring-agent-guide.md
 ```
-
-Replace `<owner>` and `<repo>` with the actual GitHub repository coordinates. If the project uses a branch other than `main`, replace `main` as well.
 
 ## Goal
 
@@ -19,7 +17,7 @@ A generated game should not require the human user to clone or edit the `llmgame
 For example, a prompt like this should be enough:
 
 ```text
-Make a rock-paper-scissors game using this guide: https://raw.githubusercontent.com/<owner>/<repo>/main/docs/game-authoring-agent-guide.md. It should be two AIs fighting each other and it should be shown on a website hosted locally.
+Make a rock-paper-scissors game using this guide: https://raw.githubusercontent.com/svanengelen-ilionx/llmgameframework/main/docs/game-authoring-agent-guide.md. It should be two AIs fighting each other and it should be shown on a website hosted locally.
 ```
 
 The expected result is a local game project similar to:
@@ -54,7 +52,7 @@ name = "rock-paper-scissors"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "llmgames @ git+https://github.com/<owner>/<repo>.git@main",
+    "llmgames @ git+https://github.com/svanengelen-ilionx/llmgameframework.git@main",
 ]
 ```
 
