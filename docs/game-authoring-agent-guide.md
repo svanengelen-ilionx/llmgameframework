@@ -130,6 +130,20 @@ Testing convenience helpers are available from `llmgames.testing`:
 from llmgames.testing import assert_terminal, find_events, run_scripted_game
 ```
 
+LLM controllers, OpenRouter providers, structured OpenRouter timeouts, and provider progress events are available from `llmgames.llm`:
+
+```python
+from llmgames.llm import (
+    LLMController,
+    LLMControllerConfig,
+    LLMProviderEvent,
+    OpenRouterConfig,
+    OpenRouterProvider,
+    OpenRouterTimeoutError,
+    ProgressLLMProvider,
+)
+```
+
 ## Required Project Folder
 
 Create a standalone project folder named with a lowercase kebab-case slug:
@@ -519,6 +533,42 @@ If the user asks for AI players, configure controllers using the available `llmg
 If the user asks for a locally hosted website, provide a local web start command and URL in the README. The guide does not prescribe the frontend stack, but the finished project must let the human start the website from the standalone project folder.
 
 If the runner has optional dependencies, document setup commands in the README.
+
+## Real LLM Web Apps
+
+Do not implement real-LLM browser play as a single silent `POST /api/match` that runs the whole match with `Engine.run()` and returns only after all model calls finish. That shape works for instant local providers, but real providers can block for many seconds per player turn. A multi-round AI-vs-AI match may require many sequential upstream model calls, making the browser look frozen.
+
+When a locally hosted website uses real LLMs, the generated project should provide visible progress and error handling. Prefer one of these patterns:
+
+- start a match, return a match id, then stream progress with Server-Sent Events or WebSockets
+- start a match in a background task and expose a polling endpoint for progress
+- expose a step/run-next-action endpoint so the browser can advance and render incrementally
+
+At minimum, a real-LLM web app should:
+
+- show provider/model readiness before the user starts a match
+- document that OpenRouter environment variables must be set before starting the server process
+- expose effective timeout and retry settings in the UI or README
+- show which player/model is currently being requested
+- handle non-2xx responses and JSON error payloads before trying to render a match
+- provide a deterministic local fallback path for demos and tests
+
+Use `ProgressLLMProvider` to turn provider calls into progress events that a CLI, local server, SSE stream, WebSocket, or polling endpoint can expose:
+
+```python
+provider_events = []
+provider = ProgressLLMProvider(
+    OpenRouterProvider(OpenRouterConfig(model="openrouter/model", timeout_seconds=10)),
+    provider_events.append,
+    provider_name="openrouter",
+    player_id="alpha",
+)
+controller = LLMController(provider, LLMControllerConfig(max_retries=0))
+```
+
+`ProgressLLMProvider` emits `model_request_started`, `model_response_received`, and `model_request_failed` events. Each event includes provider name, optional player id, optional model, elapsed seconds for completed/failed calls, and error metadata for failures.
+
+Catch `OpenRouterTimeoutError` when reporting real-provider failures. It includes `provider`, `model`, and `timeout_seconds`, which are more useful for UI error messages than a raw socket timeout.
 
 ## Event Streaming And Tracing
 

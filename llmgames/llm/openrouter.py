@@ -11,6 +11,16 @@ class OpenRouterError(RuntimeError):
     pass
 
 
+class OpenRouterTimeoutError(OpenRouterError):
+    def __init__(self, *, model: str, timeout_seconds: float) -> None:
+        self.provider = "openrouter"
+        self.model = model
+        self.timeout_seconds = timeout_seconds
+        super().__init__(
+            f"OpenRouter request timed out after {timeout_seconds:g}s for model '{model}'"
+        )
+
+
 @dataclass(frozen=True)
 class OpenRouterConfig:
     model: str
@@ -68,10 +78,20 @@ class OpenRouterProvider:
         try:
             with urlopen(request, timeout=self.config.timeout_seconds) as response:
                 response_payload = json.loads(response.read().decode("utf-8"))
+        except TimeoutError as error:
+            raise OpenRouterTimeoutError(
+                model=self.config.model,
+                timeout_seconds=self.config.timeout_seconds,
+            ) from error
         except HTTPError as error:
             detail = error.read().decode("utf-8", errors="replace")
             raise OpenRouterError(f"OpenRouter request failed with HTTP {error.code}: {detail}") from error
         except URLError as error:
+            if isinstance(error.reason, TimeoutError):
+                raise OpenRouterTimeoutError(
+                    model=self.config.model,
+                    timeout_seconds=self.config.timeout_seconds,
+                ) from error
             raise OpenRouterError(f"OpenRouter request failed: {error.reason}") from error
         except json.JSONDecodeError as error:
             raise OpenRouterError("OpenRouter returned invalid JSON") from error
