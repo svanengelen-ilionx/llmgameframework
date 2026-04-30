@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -48,6 +48,12 @@ class BaseGameModule:
 
     def get_available_actions(self, state: Any, player_id: str) -> list[ActionDefinition]:
         return [action for action in self.actions.values() if action.can_use(state, player_id)]
+
+    def get_turn_order(self, state: Any) -> Sequence[str]:
+        players = getattr(state, "players", None)
+        if players is None:
+            return []
+        return [player.id for player in players]
 
     def _build_actions(self) -> dict[str, ActionDefinition]:
         actions: dict[str, ActionDefinition] = {}

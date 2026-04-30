@@ -45,7 +45,7 @@ def build_player_prompt(
 def _message_to_dict(message: Message) -> dict[str, object]:
     return {
         "sender_id": message.sender_id,
-        "recipient_id": message.recipient_id,
+        "recipient_ids": sorted(message.recipient_ids) if message.recipient_ids is not None else None,
         "text": message.text,
         "turn": message.turn,
     }

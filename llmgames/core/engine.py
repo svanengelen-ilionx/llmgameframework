@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from random import Random
 from typing import Any
 
 from llmgames.core.contracts import (
@@ -54,6 +55,7 @@ class Engine:
         self.state: Any | None = None
         self.turn = 0
         self.action_count = 0
+        self.rng = Random(config.seed)
 
     def run(self) -> RunSummary:
         self._validate_config()
@@ -63,9 +65,10 @@ class Engine:
             if self.turn >= self.config.max_turns:
                 raise LimitExceededError(f"Maximum turns exceeded: {self.config.max_turns}")
 
-            for player in self.config.players:
+            for player_id in self.game.get_turn_order(self.state):
                 if self.game.is_terminal(self.state):
                     break
+                player = self._get_player(player_id)
                 self._run_player_turn(player)
 
             self.turn += 1
@@ -102,6 +105,7 @@ class Engine:
             turn=self.turn,
             players=self.config.players,
             event_log=self.event_logger.events,
+            rng=self.rng,
         )
         result = action.handler(self.state, player.id, intent.input, context)
         self._apply_result(result, player.id, action.name)
@@ -139,3 +143,9 @@ class Engine:
         missing = player_ids.difference(self.config.controllers)
         if missing:
             raise EngineError(f"Missing controllers for players: {', '.join(sorted(missing))}")
+
+    def _get_player(self, player_id: str) -> Player:
+        for player in self.config.players:
+            if player.id == player_id:
+                return player
+        raise EngineError(f"Turn order included unknown player: {player_id}")

@@ -15,6 +15,8 @@ from llmgames.core.contracts import (
     Observation,
     Player,
 )
+from llmgames.core.messaging import public_message
+from llmgames.core.schemas import empty_schema
 
 
 Choice = Literal["split", "steal"]
@@ -119,12 +121,7 @@ class SplitOrSteal(BaseGameModule):
         input_value: dict[str, object],
         context: ActionContext,
     ) -> ActionResult:
-        message = Message(
-            sender_id=player_id,
-            recipient_id=None,
-            text=str(input_value["text"]),
-            turn=context.turn,
-        )
+        message = public_message(sender_id=player_id, text=str(input_value["text"]), turn=context.turn)
         state.messages.append(message)
         events = [
             Event(
@@ -141,6 +138,7 @@ class SplitOrSteal(BaseGameModule):
     @action(
         name="ready",
         description="Mark yourself ready to move from conversation to choice.",
+        input_schema=empty_schema(),
         can_use="_can_talk",
     )
     def _ready(
@@ -160,6 +158,7 @@ class SplitOrSteal(BaseGameModule):
     @action(
         name="end_turn",
         description="Pass without sending a message.",
+        input_schema=empty_schema(),
         can_use="_can_talk",
     )
     def _end_turn(
@@ -177,6 +176,7 @@ class SplitOrSteal(BaseGameModule):
     @action(
         name="choose_split",
         description="Choose to split the prize.",
+        input_schema=empty_schema(),
         can_use="_can_choose",
     )
     def _choose_split(
@@ -191,6 +191,7 @@ class SplitOrSteal(BaseGameModule):
     @action(
         name="choose_steal",
         description="Choose to steal the prize.",
+        input_schema=empty_schema(),
         can_use="_can_choose",
     )
     def _choose_steal(

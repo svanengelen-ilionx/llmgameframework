@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from random import Random
 from typing import Any, Protocol
 
 
@@ -33,9 +34,15 @@ class Event:
 @dataclass(frozen=True)
 class Message:
     sender_id: str
-    recipient_id: str | None
     text: str
     turn: int
+    recipient_ids: frozenset[str] | None = None
+
+    @property
+    def recipient_id(self) -> str | None:
+        if self.recipient_ids is None or len(self.recipient_ids) != 1:
+            return None
+        return next(iter(self.recipient_ids))
 
 
 @dataclass(frozen=True)
@@ -77,6 +84,7 @@ class ActionContext:
     turn: int
     players: Sequence[Player]
     event_log: Sequence[Event]
+    rng: Random
 
 
 CanUse = Callable[[Any, str], bool]
@@ -116,6 +124,9 @@ class GameModule(Protocol):
         ...
 
     def get_available_actions(self, state: Any, player_id: str) -> list[ActionDefinition]:
+        ...
+
+    def get_turn_order(self, state: Any) -> Sequence[str]:
         ...
 
     def get_result(self, state: Any) -> GameResult:
