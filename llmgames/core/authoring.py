@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from llmgames.core.contracts import ActionDefinition, InputSchema
+from llmgames.core.views import GameView, ViewRequest
 
 
 AlwaysAvailable = Callable[[Any, str], bool]
@@ -54,6 +55,9 @@ class BaseGameModule:
         if players is None:
             return []
         return [player.id for player in players]
+
+    def get_view(self, state: Any, request: ViewRequest) -> GameView:
+        return GameView(name=request.name, visibility="public" if request.player_id is None else "player")
 
     def _build_actions(self) -> dict[str, ActionDefinition]:
         actions: dict[str, ActionDefinition] = {}

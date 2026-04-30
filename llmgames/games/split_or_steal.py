@@ -17,6 +17,7 @@ from llmgames.core.contracts import (
 )
 from llmgames.core.messaging import public_message
 from llmgames.core.schemas import empty_schema
+from llmgames.core.views import GameView, ViewRequest
 
 
 Choice = Literal["split", "steal"]
@@ -93,6 +94,25 @@ class SplitOrSteal(BaseGameModule):
             winners=winners,
             reason="Both players chose; scores resolved",
         )
+
+    def get_view(self, state: SplitOrStealState, request: ViewRequest) -> GameView:
+        if request.name != "public":
+            return super().get_view(state, request)
+        data: dict[str, object] = {
+            "phase": state.phase,
+            "players": [player.id for player in state.players],
+            "ready_players": sorted(state.ready_players),
+            "messages": [
+                {"sender_id": message.sender_id, "text": message.text, "turn": message.turn}
+                for message in state.messages
+            ],
+            "scores": dict(state.scores),
+        }
+        if state.phase == "end":
+            data["choices"] = dict(state.choices)
+        else:
+            data["choices_submitted"] = sorted(state.choices)
+        return GameView(name="public", visibility="public", data=data)
 
     def is_terminal(self, state: SplitOrStealState) -> bool:
         return state.phase == "end"

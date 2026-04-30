@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from random import Random
 from typing import Any, Protocol
 
+from llmgames.core.views import GameView, ViewRequest
+
 
 JsonObject = dict[str, Any]
 InputSchema = Mapping[str, Any]
@@ -127,6 +129,9 @@ class GameModule(Protocol):
         ...
 
     def get_turn_order(self, state: Any) -> Sequence[str]:
+        ...
+
+    def get_view(self, state: Any, request: ViewRequest) -> GameView:
         ...
 
     def get_result(self, state: Any) -> GameResult:
