@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -36,6 +36,7 @@ class RunConfig:
     seed: int | None = None
     max_turns: int = 100
     max_actions: int = 500
+    on_event: Callable[[Event], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -114,6 +115,9 @@ class Engine:
         if result.state_patch:
             self._apply_state_patch(result.state_patch)
         self.event_logger.extend(result.events)
+        if self.config.on_event:
+            for event in result.events:
+                self.config.on_event(event)
 
     def _apply_state_patch(self, patch: dict[str, object]) -> None:
         if isinstance(self.state, dict):

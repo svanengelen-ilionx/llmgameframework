@@ -1,7 +1,7 @@
 import unittest
 
 from llmgames.core.controllers import ScriptedController, intent
-from llmgames.core.contracts import Player
+from llmgames.core.contracts import Event, Player
 from llmgames.core.engine import Engine, InvalidIntentError, RunConfig
 from llmgames.games import SplitOrSteal
 
@@ -61,6 +61,23 @@ class SplitOrStealTests(unittest.TestCase):
 
         with self.assertRaisesRegex(InvalidIntentError, "Missing required"):
             engine.run()
+
+    def test_events_can_be_streamed_while_running(self) -> None:
+        streamed_events: list[Event] = []
+        players = self.players()
+        controllers = {
+            "alice": ScriptedController([intent("ready"), intent("choose_split")]),
+            "bob": ScriptedController([intent("ready"), intent("choose_steal")]),
+        }
+
+        summary = Engine(
+            SplitOrSteal(),
+            RunConfig(players=players, controllers=controllers, on_event=streamed_events.append),
+        ).run()
+
+        self.assertEqual(streamed_events, summary.events)
+        self.assertEqual(streamed_events[-1].type, "game_resolved")
+        self.assertEqual(streamed_events[-1].data["choices"], {"alice": "split", "bob": "steal"})
 
     def run_game(self, alice_choice: str, bob_choice: str):
         players = self.players()

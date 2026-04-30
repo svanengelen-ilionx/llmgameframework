@@ -164,7 +164,13 @@ class SplitOrSteal:
             turn=context.turn,
         )
         state.messages.append(message)
-        events = [Event("message_sent", f"{player_id} sent a message", {"player_id": player_id})]
+        events = [
+            Event(
+                "message_sent",
+                f"{player_id} sent a message",
+                {"player_id": player_id, "text": message.text},
+            )
+        ]
         if len(state.messages) >= state.max_messages:
             state.phase = "choice"
             events.append(Event("choice_phase_started", "Message limit reached"))
@@ -219,7 +225,13 @@ class SplitOrSteal:
         events = [Event("choice_submitted", f"{player_id} submitted a choice", {"player_id": player_id})]
         if len(state.choices) == len(state.players):
             self._resolve(state)
-            events.append(Event("game_resolved", "Both choices submitted", {"scores": dict(state.scores)}))
+            events.append(
+                Event(
+                    "game_resolved",
+                    "Both choices submitted",
+                    {"choices": dict(state.choices), "scores": dict(state.scores)},
+                )
+            )
         return ActionResult(success=True, events=events)
 
     def _resolve(self, state: SplitOrStealState) -> None:
