@@ -66,6 +66,40 @@ class LegalOption(ContractModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+def card_option(
+    value: Any,
+    *,
+    label: str | None = None,
+    payload: dict[str, Any] | None = None,
+    slot: int | None = None,
+    card_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> LegalOption:
+    option_metadata = {**(metadata or {}), "primitive": "card"}
+    if slot is not None:
+        option_metadata["slot"] = slot
+    if card_id is not None:
+        option_metadata["card_id"] = card_id
+    return LegalOption(value=value, label=label, payload=payload, metadata=option_metadata)
+
+
+def hint_option(
+    value: Any,
+    *,
+    label: str | None = None,
+    payload: dict[str, Any] | None = None,
+    target_id: str | None = None,
+    clue_type: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> LegalOption:
+    option_metadata = {**(metadata or {}), "primitive": "hint"}
+    if target_id is not None:
+        option_metadata["target_id"] = target_id
+    if clue_type is not None:
+        option_metadata["clue_type"] = clue_type
+    return LegalOption(value=value, label=label, payload=payload, metadata=option_metadata)
+
+
 class LegalOptions(ContractModel):
     kind: str
     options: list[LegalOption] = Field(default_factory=list)

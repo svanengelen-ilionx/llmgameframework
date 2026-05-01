@@ -5,6 +5,7 @@ from llmgames import (
     GameConfig,
     GameResult,
     InteractionRequest,
+    Message,
     RequestSpec,
     RulesContext,
     StateProjection,
@@ -27,6 +28,12 @@ class PrivateState(BaseModel):
 
 class EmptyPrivateState(BaseModel):
     hidden: dict[str, str] = Field(default_factory=dict)
+
+    model_config = ConfigDict(json_schema_extra={"private_paths": ["hidden"]})
+
+
+class StringPrivateState(BaseModel):
+    hidden: str = "steal"
 
     model_config = ConfigDict(json_schema_extra={"private_paths": ["hidden"]})
 
@@ -114,6 +121,15 @@ class PlayerOnlyLeakyProjectionKernel(LeakyProjectionKernel):
         return StateProjection(visible_state={"safe": True})
 
 
+class LLMOnlyLeakyProjectionKernel(LeakyProjectionKernel):
+    game_id = "llm_only_leaky_projection"
+
+    def project_state(self, state: PrivateState, audience: Audience, ctx: RulesContext) -> StateProjection:
+        if audience.kind == "llm":
+            return StateProjection(visible_state={"nested": {"hidden": state.hidden}})
+        return StateProjection(visible_state={"safe": True})
+
+
 class TerminalRevealProjectionKernel(LeakyProjectionKernel):
     game_id = "terminal_reveal_projection"
 
@@ -138,6 +154,20 @@ class EmptyPrivateProjectionKernel(LeakyProjectionKernel):
         return StateProjection(visible_state={"hidden": state.hidden})
 
 
+class MessageLeakyProjectionKernel(LeakyProjectionKernel):
+    game_id = "message_leaky_projection"
+    state_model = StringPrivateState
+
+    def initial_state(self, config: GameConfig, ctx: RulesContext) -> StringPrivateState:
+        return StringPrivateState()
+
+    def current_requests(self, state: StringPrivateState, ctx: RulesContext) -> list[RequestSpec]:
+        return []
+
+    def project_state(self, state: StringPrivateState, audience: Audience, ctx: RulesContext) -> StateProjection:
+        return StateProjection(visible_state={"safe": True}, visible_messages=[Message(text=state.hidden)])
+
+
 def test_duplicate_request_keys_are_diagnostic() -> None:
     issues = validate_kernel(DuplicateRequestKernel())
 
@@ -147,7 +177,10 @@ def test_duplicate_request_keys_are_diagnostic() -> None:
 def test_resolve_mutation_is_diagnostic() -> None:
     issues = validate_kernel(MutatingResolveKernel())
 
-    assert any(issue.method == "resolve" and "mutated" in issue.message for issue in issues)
+    assert any(
+        issue.method == "resolve" and "mutated input state at root['value']" in issue.message
+        for issue in issues
+    )
 
 
 def test_private_path_projection_leak_is_diagnostic() -> None:
@@ -157,7 +190,7 @@ def test_private_path_projection_leak_is_diagnostic() -> None:
         issue.method == "project_state"
         and "audience='public'" in issue.message
         and "private path 'hidden'" in issue.message
-        and "projection path 'visible_state.hidden'" in issue.message
+        and "projection path 'projection.visible_state.hidden'" in issue.message
         for issue in issues
     )
 
@@ -168,7 +201,18 @@ def test_player_private_path_projection_leak_names_player_audience() -> None:
     assert any(
         issue.method == "project_state"
         and "audience='player:alice'" in issue.message
-        and "projection path 'visible_state.nested.hidden'" in issue.message
+        and "projection path 'projection.visible_state.nested.hidden'" in issue.message
+        for issue in issues
+    )
+
+
+def test_llm_private_path_projection_leak_names_llm_audience() -> None:
+    issues = validate_kernel(LLMOnlyLeakyProjectionKernel())
+
+    assert any(
+        issue.method == "project_state"
+        and "audience='llm:alice'" in issue.message
+        and "projection path 'projection.visible_state.nested.hidden'" in issue.message
         for issue in issues
     )
 
@@ -183,3 +227,14 @@ def test_empty_private_path_is_not_reported_as_leak() -> None:
     issues = validate_kernel(EmptyPrivateProjectionKernel())
 
     assert issues == []
+
+
+def test_visible_message_private_path_projection_leak_is_diagnostic() -> None:
+    issues = validate_kernel(MessageLeakyProjectionKernel())
+
+    assert any(
+        issue.method == "project_state"
+        and "private path 'hidden'" in issue.message
+        and "projection path 'projection.visible_messages[0].text'" in issue.message
+        for issue in issues
+    )

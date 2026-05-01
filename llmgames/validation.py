@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Literal
 
+from deepdiff import DeepDiff
 from jsonschema import ValidationError as JsonSchemaValidationError
 from jsonschema import validate as validate_json_schema
 from pydantic import BaseModel
@@ -153,9 +154,11 @@ def _call_current_requests(
 
     if _dump(state) != before:
         issues.append(
-            KernelIssue(
+            _mutation_issue(
                 method="current_requests",
-                message="current_requests() mutated its input state.",
+                subject="input state",
+                before=before,
+                after=_dump(state),
                 hint="Return request specs without changing the state object.",
             )
         )
@@ -260,10 +263,14 @@ def _call_validate_submission(
         issues.append(_exception_issue("validate_submission", exc))
         return None
     if _dump(state) != before_state or _dump(request) != before_request or _dump(submission) != before_submission:
+        before = {"state": before_state, "request": before_request, "submission": before_submission}
+        after = {"state": _dump(state), "request": _dump(request), "submission": _dump(submission)}
         issues.append(
-            KernelIssue(
+            _mutation_issue(
                 method="validate_submission",
-                message="validate_submission() mutated state, request, or submission.",
+                subject="state, request, or submission",
+                before=before,
+                after=after,
                 hint="Return ValidationIssue objects without changing inputs.",
             )
         )
@@ -296,9 +303,11 @@ def _call_resolve(
         return None
     if _dump(state) != before:
         issues.append(
-            KernelIssue(
+            _mutation_issue(
                 method="resolve",
-                message="resolve() mutated its input state.",
+                subject="input state",
+                before=before,
+                after=_dump(state),
                 hint="Use state.model_copy(deep=True) before applying accepted submissions.",
             )
         )
@@ -337,7 +346,12 @@ def _call_resolve(
 def _validate_projection(
     kernel: RulesKernel, state: BaseModel, ctx: RulesContext, issues: list[KernelIssue]
 ) -> None:
-    for audience in [Audience.public(), *(Audience.player(player.id) for player in ctx.config.players)]:
+    audiences = [
+        Audience.public(),
+        *(Audience.player(player.id) for player in ctx.config.players),
+        *(Audience.llm(player.id) for player in ctx.config.players),
+    ]
+    for audience in audiences:
         before = _dump(state)
         try:
             projection = kernel.project_state(state, audience, ctx)
@@ -346,9 +360,11 @@ def _validate_projection(
             return
         if _dump(state) != before:
             issues.append(
-                KernelIssue(
+                _mutation_issue(
                     method="project_state",
-                    message="project_state() mutated its input state.",
+                    subject="input state",
+                    before=before,
+                    after=_dump(state),
                     hint="Build visible_state separately from truth state.",
                 )
             )
@@ -373,42 +389,72 @@ def _validate_private_paths(
 ) -> None:
     if projection.result is not None or audience.kind not in {"public", "player", "llm"}:
         return
-    private_paths = _private_paths(state)
+    state_data = state.model_dump(mode="json")
+    private_paths = _private_paths(state, audience)
     for private_path in private_paths:
-        private_value = _value_at_path(state.model_dump(mode="json"), private_path)
-        if _is_empty_private_value(private_value):
-            continue
-        visible_path = _find_value_path(projection.visible_state, private_value, path="visible_state")
-        if visible_path is not None:
-            issues.append(
-                KernelIssue(
-                    method="project_state",
-                    message=(
-                        f"project_state(audience='{_audience_key(audience)}') leaked private path "
-                        f"'{private_path}' at projection path '{visible_path}'."
-                    ),
-                    hint="Hide declared private values from non-terminal public/player/LLM projections.",
+        for private_value in _values_at_path(state_data, private_path):
+            if _is_empty_private_value(private_value):
+                continue
+            visible_path = _find_value_path(_projection_visible_data(projection), private_value, path="projection")
+            if visible_path is not None:
+                issues.append(
+                    KernelIssue(
+                        method="project_state",
+                        message=(
+                            f"project_state(audience='{_audience_key(audience)}') leaked private path "
+                            f"'{private_path}' at projection path '{visible_path}'."
+                        ),
+                        hint="Hide declared private values from non-terminal public/player/LLM projections.",
+                    )
                 )
-            )
-            return
+                return
 
 
-def _private_paths(state: BaseModel) -> list[str]:
+def _private_paths(state: BaseModel, audience: Audience) -> list[str]:
     extra = getattr(state, "model_config", {}).get("json_schema_extra") or {}
-    return list(extra.get("private_paths", []))
+    paths = list(extra.get("private_paths", []))
+    by_audience = extra.get("private_paths_by_audience", {})
+    if isinstance(by_audience, dict):
+        paths.extend(by_audience.get(audience.kind, []))
+    return [_format_private_path(path, audience) for path in paths]
 
 
-def _value_at_path(data: Any, path: str) -> Any:
-    value = data
+def _format_private_path(path: str, audience: Audience) -> str:
+    return path.replace("{audience.player_id}", audience.player_id or "")
+
+
+def _values_at_path(data: Any, path: str) -> list[Any]:
+    values = [data]
     for part in path.split("."):
-        if not isinstance(value, dict) or part not in value:
-            return None
-        value = value[part]
-    return value
+        next_values: list[Any] = []
+        for value in values:
+            if part == "*":
+                if isinstance(value, dict):
+                    next_values.extend(value.values())
+                elif isinstance(value, list):
+                    next_values.extend(value)
+                continue
+            if isinstance(value, dict) and part in value:
+                next_values.append(value[part])
+            elif isinstance(value, list) and part.isdigit():
+                index = int(part)
+                if 0 <= index < len(value):
+                    next_values.append(value[index])
+        values = next_values
+        if not values:
+            break
+    return values
 
 
 def _is_empty_private_value(value: Any) -> bool:
     return value is None or value == {} or value == []
+
+
+def _projection_visible_data(projection: StateProjection) -> dict[str, Any]:
+    return {
+        "visible_state": projection.visible_state,
+        "visible_messages": [message.model_dump(mode="json") for message in projection.visible_messages],
+    }
 
 
 def _find_value_path(container: Any, value: Any, *, path: str) -> str | None:
@@ -477,6 +523,26 @@ def _dump(value: Any) -> Any:
 
 def _has_error(issues: list[KernelIssue]) -> bool:
     return any(issue.severity == "error" for issue in issues)
+
+
+def _mutation_issue(method: str, subject: str, before: Any, after: Any, hint: str) -> KernelIssue:
+    return KernelIssue(
+        method=method,
+        message=f"{method}() mutated {subject} at {_first_diff_path(before, after)}.",
+        hint=hint,
+    )
+
+
+def _first_diff_path(before: Any, after: Any) -> str:
+    diff = DeepDiff(before, after, ignore_order=False)
+    for values in diff.values():
+        if isinstance(values, dict) and values:
+            return next(iter(values.keys()))
+        if isinstance(values, set) and values:
+            return next(iter(values))
+        if isinstance(values, list) and values:
+            return str(values[0])
+    return "$"
 
 
 def _exception_issue(method: str, exc: Exception) -> KernelIssue:
