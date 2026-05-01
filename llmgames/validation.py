@@ -378,11 +378,15 @@ def _validate_private_paths(
         private_value = _value_at_path(state.model_dump(mode="json"), private_path)
         if _is_empty_private_value(private_value):
             continue
-        if _contains_value(projection.visible_state, private_value):
+        visible_path = _find_value_path(projection.visible_state, private_value, path="visible_state")
+        if visible_path is not None:
             issues.append(
                 KernelIssue(
                     method="project_state",
-                    message=f"project_state(audience='{audience.kind}') leaked private path '{private_path}'.",
+                    message=(
+                        f"project_state(audience='{_audience_key(audience)}') leaked private path "
+                        f"'{private_path}' at projection path '{visible_path}'."
+                    ),
                     hint="Hide declared private values from non-terminal public/player/LLM projections.",
                 )
             )
@@ -407,14 +411,28 @@ def _is_empty_private_value(value: Any) -> bool:
     return value is None or value == {} or value == []
 
 
-def _contains_value(container: Any, value: Any) -> bool:
+def _find_value_path(container: Any, value: Any, *, path: str) -> str | None:
     if container == value:
-        return True
+        return path
     if isinstance(container, dict):
-        return any(_contains_value(item, value) for item in container.values())
+        for key, item in container.items():
+            found = _find_value_path(item, value, path=f"{path}.{key}")
+            if found is not None:
+                return found
+        return None
     if isinstance(container, list):
-        return any(_contains_value(item, value) for item in container)
-    return False
+        for index, item in enumerate(container):
+            found = _find_value_path(item, value, path=f"{path}[{index}]")
+            if found is not None:
+                return found
+        return None
+    return None
+
+
+def _audience_key(audience: Audience) -> str:
+    if audience.player_id is None:
+        return audience.kind
+    return f"{audience.kind}:{audience.player_id}"
 
 
 def _promote_request(spec: RequestSpec, *, session_id: str, sequence: int) -> InteractionRequest:
