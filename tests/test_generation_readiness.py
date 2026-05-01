@@ -43,6 +43,8 @@ def test_agent_game_authoring_doc_is_self_contained_for_autonomous_agents() -> N
         "Do not clone or inspect the framework repository",
         "Do not edit files inside the `llmgames` package",
         "python -m pip install llmgames",
+        "llmgames @ git+https://github.com/svanengelen-ilionx/llmgameframework.git@main",
+        "The distribution name is `llmgames`, and the import package is also `llmgames`.",
         "Public Imports",
         "Kernel Skeleton",
         "Player Experience Requirements",
@@ -62,6 +64,7 @@ def test_agent_game_authoring_doc_is_self_contained_for_autonomous_agents() -> N
 def test_agent_prompt_template_reinforces_user_experience_and_no_core_edits() -> None:
     prompt_template = (ROOT / "docs" / "AGENT_PROMPT_TEMPLATE.md").read_text(encoding="utf-8")
 
+    assert "https://github.com/svanengelen-ilionx/llmgameframework/blob/main/docs/AGENT_GAME_AUTHORING.md" in prompt_template
     assert "Do not clone, inspect, or modify the llmgames framework repository" in prompt_template
     assert "at least one LLM player" in prompt_template
     assert "good end-user experience" in prompt_template
@@ -123,13 +126,15 @@ def test_internal_plan_no_longer_names_specific_order_game_as_core_target() -> N
     assert "historical implementation plan" in plan
 
 
-def test_completed_generation_readiness_plan_was_removed() -> None:
+def test_completed_historical_plans_were_removed() -> None:
     assert not (ROOT / "GENERATION_READINESS_PLAN.md").exists()
+    assert not (ROOT / "PHASE5_CORE_GAPS.md").exists()
 
 
-def test_phase5_gap_report_is_marked_resolved_and_historical() -> None:
-    gap_report = (ROOT / "PHASE5_CORE_GAPS.md").read_text(encoding="utf-8")
+def test_package_install_path_is_documented_for_agents() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    instructions = (ROOT / "docs" / "AGENT_GAME_AUTHORING.md").read_text(encoding="utf-8")
 
-    assert gap_report.startswith("# Resolved Phase 5 Core Gap Report")
-    assert "historical report" in gap_report
-    assert "Implemented resolution" in gap_report
+    install_spec = "llmgames @ git+https://github.com/svanengelen-ilionx/llmgameframework.git@main"
+    assert install_spec in readme
+    assert install_spec in instructions

@@ -29,9 +29,11 @@ python -m pip install pytest pytest-asyncio
 If the user gives a GitHub package URL instead of a published package, install it directly:
 
 ```bash
-python -m pip install 'llmgames @ git+https://github.com/<owner>/<repo>.git'
+python -m pip install 'llmgames @ git+https://github.com/svanengelen-ilionx/llmgameframework.git@main'
 python -m pip install pytest pytest-asyncio
 ```
+
+The distribution name is `llmgames`, and the import package is also `llmgames`.
 
 Do not clone or inspect the framework repository unless the user explicitly requests framework changes. The instructions in this document and the installed package API are the contract.
 

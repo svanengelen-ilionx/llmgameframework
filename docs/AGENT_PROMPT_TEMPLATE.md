@@ -4,7 +4,7 @@ Give this prompt to an autonomous AI coding agent when you want it to create a g
 
 ```text
 Use these implementation instructions:
-https://github.com/<owner>/<repo>/blob/main/docs/AGENT_GAME_AUTHORING.md
+https://github.com/svanengelen-ilionx/llmgameframework/blob/main/docs/AGENT_GAME_AUTHORING.md
 
 Create a game with this concept:
 <describe the game concept here>
@@ -26,13 +26,13 @@ Expected output:
 - any limitations or framework capabilities that were missing
 ```
 
-Replace `<owner>/<repo>` with the GitHub repository that hosts this document, and replace `<describe the game concept here>` with the user's desired game.
+Replace `<describe the game concept here>` with the user's desired game.
 
 ## Example Request
 
 ```text
 Use these implementation instructions:
-https://github.com/example/llmgames/blob/main/docs/AGENT_GAME_AUTHORING.md
+https://github.com/svanengelen-ilionx/llmgameframework/blob/main/docs/AGENT_GAME_AUTHORING.md
 
 Create a game called Council of Embers. It should support four players, one LLM-controlled player, hidden roles, simultaneous voting, negotiation resources, and a public reveal phase.
 

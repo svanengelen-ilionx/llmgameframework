@@ -4,6 +4,21 @@
 
 The package is designed for generated game code. A game author implements a small synchronous `RulesKernel`; the async runtime owns request IDs, submissions, replay, projections, events, storage, web adapters, deadlines, and LLM responders.
 
+## Install As A Package
+
+Until the package is published to an index, install it directly from GitHub:
+
+```bash
+python -m pip install 'llmgames @ git+https://github.com/svanengelen-ilionx/llmgameframework.git@main'
+```
+
+Generated games should import the public API from `llmgames`, plus test helpers from `llmgames.testing`:
+
+```python
+from llmgames import GameConfig, GameSession, Player
+from llmgames.testing import validate_kernel
+```
+
 ## Install For Development
 
 ```bash
