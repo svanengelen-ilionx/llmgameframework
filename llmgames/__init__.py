@@ -1,3 +1,5 @@
+from llmgames.clock import Clock, ManualClock, SystemClock
+from llmgames.assistance import AssistedSeatController, AssistedSuggestion, SeatCapabilities
 from llmgames.models import (
     Audience,
     GameConfig,
@@ -17,6 +19,7 @@ from llmgames.models import (
     Submission,
     TransitionResult,
     ValidationIssue,
+    approval_option,
     card_option,
     hint_option,
 )
@@ -26,7 +29,10 @@ from llmgames.storage import JSONFileSessionStore, SessionSnapshot, SessionStore
 from llmgames.web import CreateSessionRequest, SubmitRequest, create_game_app, create_game_router
 
 __all__ = [
+    "AssistedSeatController",
+    "AssistedSuggestion",
     "Audience",
+    "Clock",
     "GameConfig",
     "GameEventSpec",
     "GameResult",
@@ -34,6 +40,7 @@ __all__ = [
     "LegalOption",
     "LegalOptions",
     "Message",
+    "ManualClock",
     "Player",
     "Projection",
     "RequestMode",
@@ -41,10 +48,12 @@ __all__ = [
     "RequestStatus",
     "RulesContext",
     "RulesKernel",
+    "SeatCapabilities",
     "StateProjection",
     "Submission",
     "GameSession",
     "SubmitResult",
+    "SystemClock",
     "JSONFileSessionStore",
     "SessionSnapshot",
     "SessionStore",
@@ -52,6 +61,7 @@ __all__ = [
     "SubmitRequest",
     "TransitionResult",
     "ValidationIssue",
+    "approval_option",
     "card_option",
     "create_game_app",
     "create_game_router",

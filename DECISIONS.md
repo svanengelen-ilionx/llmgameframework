@@ -31,3 +31,7 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - a323a88: The first Phase 3 store is an async JSON file store that implements the store protocol without adding database dependencies before the web adapter needs them.
 - 3a24e14: Phase 3 web adapters are built as FastAPI router/app helpers over a `SessionStore`; each request restores, mutates when needed, and re-saves snapshots rather than keeping hidden process-local session state.
 - 3a24e14: Phase 3 SSE support replays stored game events after an event cursor with audience filtering, using deterministic event list order as the SSE event ID sequence.
+- 5ce80d8: Phase 4 timers add an injectable clock, `timer` request mode, and `deadline_at` request metadata; expiration is driven by runtime advancement rather than kernel side effects.
+- 5ce80d8: Deadline expiration marks pending requests `expired` and emits deterministic `request.expired` events with request correlation metadata for frontend timeout displays.
+- e228ebc: Phase 4 assisted seats create LLM suggestions as explicit `assist.*` events; approval and editing submit through `GameSession.submit(source="human")` so suggestions never bypass normal validation.
+- e228ebc: Approval actions are represented as `LegalOption` metadata primitives rather than a new request/submission type, keeping generated games on the existing author-facing contract.

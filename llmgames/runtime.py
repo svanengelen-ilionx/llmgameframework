@@ -7,6 +7,7 @@ from jsonschema import ValidationError as JsonSchemaValidationError
 from jsonschema import validate as validate_json_schema
 from pydantic import BaseModel, Field
 
+from llmgames.clock import Clock, SystemClock
 from llmgames.models import (
     Audience,
     GameConfig,
@@ -35,11 +36,13 @@ class GameSession:
         *,
         seed: int = 0,
         session_id: str = "session_1",
+        clock: Clock | None = None,
     ) -> None:
         self.kernel = kernel
         self.config = config
         self.seed = seed
         self.session_id = session_id
+        self.clock = clock or SystemClock()
         self.state: BaseModel | None = None
         self.status = "created"
         self.event_seq = 0
@@ -72,6 +75,7 @@ class GameSession:
 
     async def projection(self, audience: Audience) -> Projection:
         self._require_started()
+        self._expire_pending_requests()
         state_projection = self.kernel.project_state(self.state, audience, self._ctx())
         if state_projection.result is not None:
             self.status = "complete"
@@ -97,6 +101,7 @@ class GameSession:
         source: str = "human",
     ) -> SubmitResult:
         self._require_started()
+        self._expire_pending_requests()
         request = self._find_request(request_id)
         submission = self._new_submission(
             request_id=request_id,
@@ -155,6 +160,7 @@ class GameSession:
 
     async def advance(self) -> None:
         self._require_started()
+        self._expire_pending_requests()
         self._refresh_requests(resolved_keys=set())
 
     def record_event(
@@ -201,15 +207,15 @@ class GameSession:
                 raise ValueError(f"Duplicate RequestSpec.key={spec.key!r}")
             seen_keys.add(spec.key)
 
-        pending_by_key = {
-            request.spec_key: request for request in self._requests if request.status == "pending"
+        active_by_key = {
+            request.spec_key: request for request in self._requests if request.status in {"pending", "expired"}
         }
         for spec in specs:
-            existing = pending_by_key.get(spec.key)
+            existing = active_by_key.get(spec.key)
             if existing is None:
                 self._requests.append(self._new_request(spec))
                 continue
-            if _request_conflicts(existing, spec):
+            if existing.status == "pending" and _request_conflicts(existing, spec):
                 raise ValueError(f"Pending request spec conflict for key={spec.key!r}")
 
         current_keys = {spec.key for spec in specs}
@@ -230,6 +236,7 @@ class GameSession:
             mode=spec.mode,
             input_schema=spec.input_schema,
             legal_options=spec.legal_options,
+            deadline_at=spec.deadline_at,
             metadata=spec.metadata,
             status="pending",
             correlation_id=f"corr_{self._request_seq}",
@@ -273,8 +280,27 @@ class GameSession:
     def _find_request(self, request_id: str) -> InteractionRequest | None:
         return next((request for request in self._requests if request.id == request_id), None)
 
+    def _expire_pending_requests(self) -> None:
+        now = self.clock.now()
+        for request in self._requests:
+            if request.status != "pending" or request.deadline_at is None or request.deadline_at > now:
+                continue
+            request.status = "expired"
+            self.record_event(
+                "request.expired",
+                {
+                    "request_id": request.id,
+                    "request_spec_key": request.spec_key,
+                    "actor_id": request.actor_id,
+                    "correlation_id": request.correlation_id,
+                    "deadline_at": request.deadline_at.isoformat(),
+                    "expired_at": now.isoformat(),
+                },
+            )
+            request.resolved_event_seq = self.event_seq
+
     def _ctx(self) -> RulesContext:
-        return RulesContext(config=self.config, current_event_seq=self.event_seq)
+        return RulesContext(config=self.config, current_event_seq=self.event_seq, current_time=self.clock.now())
 
     def _require_started(self) -> None:
         if self.state is None:
@@ -303,5 +329,6 @@ def _request_conflicts(request: InteractionRequest, spec: RequestSpec) -> bool:
             request.actor_id != spec.actor_id,
             request.mode != spec.mode,
             request.input_schema != spec.input_schema,
+            request.deadline_at != spec.deadline_at,
         ]
     )
