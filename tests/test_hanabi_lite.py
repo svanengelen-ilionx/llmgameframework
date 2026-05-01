@@ -100,6 +100,40 @@ async def test_hanabi_lite_clue_updates_only_public_knowledge() -> None:
     assert "r2a" not in str(bob_projection.visible_state["own_hand"])
 
 
+@pytest.mark.asyncio
+async def test_rank_clue_with_string_value_reports_invalid_value() -> None:
+    session = GameSession(_runtime_kernel(), _config())
+    await session.start()
+
+    result = await session.submit(
+        "req_1",
+        {"action": "clue", "target_id": "bob", "clue_type": "rank", "value": "red"},
+        actor_id="alice",
+        idempotency_key="alice-bad-rank-clue",
+    )
+
+    assert result.accepted is False
+    assert result.issues[0].code == "invalid_clue_value"
+    assert result.issues[0].message == "A rank clue value must be an integer rank."
+
+
+@pytest.mark.asyncio
+async def test_color_clue_with_integer_value_reports_invalid_value() -> None:
+    session = GameSession(_runtime_kernel(), _config())
+    await session.start()
+
+    result = await session.submit(
+        "req_1",
+        {"action": "clue", "target_id": "bob", "clue_type": "color", "value": 2},
+        actor_id="alice",
+        idempotency_key="alice-bad-color-clue",
+    )
+
+    assert result.accepted is False
+    assert result.issues[0].code == "invalid_clue_value"
+    assert result.issues[0].message == "A color clue value must be a color string."
+
+
 @settings(max_examples=25)
 @given(
     alice_card_ids=st.lists(

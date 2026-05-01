@@ -268,6 +268,10 @@ def _validate_clue(
     clue_value = payload.get("value")
     if clue_type not in {"color", "rank"}:
         return [_issue("invalid_clue_type", "Clue type must be color or rank.", ["payload", "clue_type"])]
+    if clue_type == "color" and not isinstance(clue_value, str):
+        return [_issue("invalid_clue_value", "A color clue value must be a color string.", ["payload", "value"])]
+    if clue_type == "rank" and not isinstance(clue_value, int):
+        return [_issue("invalid_clue_value", "A rank clue value must be an integer rank.", ["payload", "value"])]
     if not _matching_slots(state.hands[target_id], clue_type, clue_value):
         return [_issue("empty_clue", "A clue must identify at least one card in the target hand.", ["payload", "value"])]
     return []
