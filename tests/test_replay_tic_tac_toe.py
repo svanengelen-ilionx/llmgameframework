@@ -41,6 +41,24 @@ async def test_tic_tac_toe_replay_reports_first_difference() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tic_tac_toe_replay_reports_nested_first_difference() -> None:
+    summary = await run_scripted_session(TicTacToeKernel(), _config(), _winning_script(), seed=42)
+    changed_trace = summary.comparable_trace.model_copy(deep=True)
+    changed_trace.accepted_submissions[2]["payload"]["row"] = 99
+
+    replayed = await replay_session(
+        TicTacToeKernel(),
+        summary.config,
+        summary.seed,
+        summary.accepted_submissions,
+        expected_trace=changed_trace,
+    )
+
+    assert replayed.matched is False
+    assert replayed.first_difference == "accepted_submissions[2].payload.row"
+
+
+@pytest.mark.asyncio
 async def test_tic_tac_toe_replay_ignores_submission_timestamps() -> None:
     summary = await run_scripted_session(TicTacToeKernel(), _config(), _winning_script(), seed=42)
 

@@ -1,6 +1,6 @@
 import pytest
 
-from llmgames import Audience, GameConfig, GameSession, Player
+from llmgames import Audience, GameConfig, GameSession, Player, Projection
 from llmgames.games import SplitOrStealKernel
 from llmgames.testing import assert_projection_private, replay_session, run_scripted_session
 
@@ -118,6 +118,24 @@ async def test_split_or_steal_scripted_session_replays_identically() -> None:
     )
 
     assert replayed.matched is True
+
+
+def test_projection_privacy_assertion_catches_direct_value_leak() -> None:
+    projection = Projection(
+        session_id="session_1",
+        audience=Audience.public(),
+        status="running",
+        visible_state={"choice": "steal"},
+        visible_requests=[],
+        event_cursor=0,
+    )
+
+    with pytest.raises(AssertionError, match="leaked forbidden value 'steal'"):
+        assert_projection_private(
+            projection,
+            forbidden_values=["steal", "split"],
+            context="test projection",
+        )
 
 
 def _script() -> list[dict]:

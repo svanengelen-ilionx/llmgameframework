@@ -204,10 +204,41 @@ def _projection_dump(projection: Projection) -> dict[str, Any]:
 def _first_difference(expected: ComparableTrace, actual: ComparableTrace) -> str | None:
     expected_data = expected.model_dump(mode="json")
     actual_data = actual.model_dump(mode="json")
-    for key in expected_data:
-        if expected_data[key] != actual_data.get(key):
-            return key
-    extra_keys = set(actual_data) - set(expected_data)
-    if extra_keys:
-        return sorted(extra_keys)[0]
+    return _first_value_difference(expected_data, actual_data, path="")
+
+
+def _first_value_difference(expected: Any, actual: Any, *, path: str) -> str | None:
+    if type(expected) is not type(actual):
+        return path or "$"
+    if isinstance(expected, dict):
+        for key in expected:
+            child_path = _join_path(path, key)
+            if key not in actual:
+                return child_path
+            difference = _first_value_difference(expected[key], actual[key], path=child_path)
+            if difference is not None:
+                return difference
+        extra_keys = sorted(set(actual) - set(expected))
+        if extra_keys:
+            return _join_path(path, extra_keys[0])
+        return None
+    if isinstance(expected, list):
+        for index, item in enumerate(expected):
+            child_path = f"{path}[{index}]" if path else f"[{index}]"
+            if index >= len(actual):
+                return child_path
+            difference = _first_value_difference(item, actual[index], path=child_path)
+            if difference is not None:
+                return difference
+        if len(actual) > len(expected):
+            return f"{path}[{len(expected)}]" if path else f"[{len(expected)}]"
+        return None
+    if expected != actual:
+        return path or "$"
     return None
+
+
+def _join_path(parent: str, key: str) -> str:
+    if not parent:
+        return key
+    return f"{parent}.{key}"
