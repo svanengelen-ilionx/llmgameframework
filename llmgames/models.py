@@ -11,6 +11,7 @@ SubmissionSource: TypeAlias = Literal[
     "human", "llm", "scripted", "timer", "system", "moderator", "replay"
 ]
 SubmissionStatus: TypeAlias = Literal["received", "accepted", "rejected"]
+SubmissionIntent: TypeAlias = Literal["draft", "final"]
 IssueSeverity: TypeAlias = Literal["error", "warning"]
 AudienceKind: TypeAlias = Literal["public", "player", "llm", "moderator", "debug"]
 
@@ -115,6 +116,23 @@ def approval_option(
     return LegalOption(value=action, label=label, payload=payload, metadata=option_metadata)
 
 
+def order_set_option(
+    value: Any,
+    *,
+    label: str | None = None,
+    payload: dict[str, Any] | None = None,
+    order_count: int | None = None,
+    subject_ids: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> LegalOption:
+    option_metadata = {**(metadata or {}), "primitive": "order_set"}
+    if order_count is not None:
+        option_metadata["order_count"] = order_count
+    if subject_ids is not None:
+        option_metadata["subject_ids"] = subject_ids
+    return LegalOption(value=value, label=label, payload=payload, metadata=option_metadata)
+
+
 class LegalOptions(ContractModel):
     kind: str
     options: list[LegalOption] = Field(default_factory=list)
@@ -157,6 +175,7 @@ class Submission(ContractModel):
     source: SubmissionSource
     payload: dict[str, Any]
     idempotency_key: str
+    intent: SubmissionIntent = "final"
     correlation_id: str
     submitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: SubmissionStatus = "received"

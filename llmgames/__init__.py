@@ -17,11 +17,13 @@ from llmgames.models import (
     RulesContext,
     StateProjection,
     Submission,
+    SubmissionIntent,
     TransitionResult,
     ValidationIssue,
     approval_option,
     card_option,
     hint_option,
+    order_set_option,
 )
 from llmgames.rules import RulesKernel
 from llmgames.runtime import GameSession, SubmitResult
@@ -51,6 +53,7 @@ __all__ = [
     "SeatCapabilities",
     "StateProjection",
     "Submission",
+    "SubmissionIntent",
     "GameSession",
     "SubmitResult",
     "SystemClock",
@@ -66,6 +69,7 @@ __all__ = [
     "create_game_app",
     "create_game_router",
     "hint_option",
+    "order_set_option",
     "restore_session",
     "snapshot_session",
 ]

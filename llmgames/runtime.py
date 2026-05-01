@@ -17,6 +17,7 @@ from llmgames.models import (
     RequestSpec,
     RulesContext,
     Submission,
+    SubmissionIntent,
     ValidationIssue,
 )
 from llmgames.rules import RulesKernel
@@ -99,6 +100,7 @@ class GameSession:
         actor_id: str | None,
         idempotency_key: str,
         source: str = "human",
+        intent: SubmissionIntent = "final",
     ) -> SubmitResult:
         self._require_started()
         self._expire_pending_requests()
@@ -109,6 +111,7 @@ class GameSession:
             source=source,
             payload=payload,
             idempotency_key=idempotency_key,
+            intent=intent,
             correlation_id=request.correlation_id if request else f"missing:{request_id}",
         )
 
@@ -118,12 +121,12 @@ class GameSession:
         idempotency_key_tuple = (request.id, idempotency_key)
         previous = self._accepted_by_idempotency.get(idempotency_key_tuple)
         if previous is not None:
-            if previous.payload == payload:
+            if previous.payload == payload and previous.intent == intent:
                 return SubmitResult(accepted=True, submission=previous, issues=[])
             return self._reject(
                 submission,
                 "idempotency_conflict",
-                "The same idempotency_key was already used with a different payload.",
+                "The same idempotency_key was already used with a different payload or intent.",
                 ["idempotency_key"],
             )
 
@@ -155,7 +158,8 @@ class GameSession:
         submission.status = "accepted"
         self._submissions.append(submission)
         self._accepted_by_idempotency[idempotency_key_tuple] = submission
-        self._resolve_after_acceptance()
+        if submission.intent == "final":
+            self._resolve_after_acceptance()
         return SubmitResult(accepted=True, submission=submission, issues=game_issues)
 
     async def advance(self) -> None:
@@ -181,7 +185,9 @@ class GameSession:
         submissions = [
             submission
             for submission in self._submissions
-            if submission.status == "accepted" and submission.request_id in request_ids
+            if submission.status == "accepted"
+            and submission.intent == "final"
+            and submission.request_id in request_ids
         ]
         transition = self.kernel.resolve(self.state, requests, submissions, self._ctx())
         if not isinstance(transition.new_state, self.kernel.state_model):
@@ -251,6 +257,7 @@ class GameSession:
         source: str,
         payload: dict[str, Any],
         idempotency_key: str,
+        intent: SubmissionIntent,
         correlation_id: str,
     ) -> Submission:
         self._submission_seq += 1
@@ -261,6 +268,7 @@ class GameSession:
             source=source,
             payload=payload,
             idempotency_key=idempotency_key,
+            intent=intent,
             correlation_id=correlation_id,
             submitted_at=datetime.now(timezone.utc),
         )
