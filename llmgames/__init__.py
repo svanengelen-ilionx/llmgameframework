@@ -19,6 +19,7 @@ from llmgames.models import (
     ValidationIssue,
 )
 from llmgames.rules import RulesKernel
+from llmgames.runtime import GameSession, SubmitResult
 
 __all__ = [
     "Audience",
@@ -38,6 +39,8 @@ __all__ = [
     "RulesKernel",
     "StateProjection",
     "Submission",
+    "GameSession",
+    "SubmitResult",
     "TransitionResult",
     "ValidationIssue",
 ]
