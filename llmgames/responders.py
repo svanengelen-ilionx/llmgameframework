@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from llmgames.llm import LLMProvider, LLMSubmission, PromptContext, build_prompt_context
+from llmgames.llm import LLMProvider, LLMProviderError, LLMSubmission, PromptContext, build_prompt_context
 from llmgames.models import Audience, InteractionRequest
 from llmgames.runtime import GameSession, SubmitResult
 
@@ -39,15 +39,37 @@ class LLMResponder:
         projection = await session.projection(audience)
         visible_request = _find_visible_request(projection.visible_requests, request.id)
         context = build_prompt_context(projection, visible_request)
-        llm_submission = await self.provider.complete(context)
+        event_payload = {
+            "request_id": visible_request.id,
+            "request_spec_key": visible_request.spec_key,
+            "actor_id": visible_request.actor_id,
+            "correlation_id": visible_request.correlation_id,
+        }
+        session.record_event("llm.requested", event_payload)
+        try:
+            llm_submission = await self.provider.complete(context)
+        except LLMProviderError as exc:
+            session.record_event("llm.failed", {**event_payload, "issue": exc.issue.model_dump(mode="json")})
+            raise
+        session.record_event("llm.completed", {**event_payload, "metadata": llm_submission.metadata})
         self._sequence += 1
-        return await session.submit(
+        result = await session.submit(
             visible_request.id,
             llm_submission.payload,
             actor_id=visible_request.actor_id,
             idempotency_key=f"{self.idempotency_prefix}:{visible_request.spec_key}:{self._sequence}",
             source="llm",
         )
+        session.record_event(
+            "llm.submitted",
+            {
+                **event_payload,
+                "submission_id": result.submission.id,
+                "accepted": result.accepted,
+                "issues": [issue.model_dump(mode="json") for issue in result.issues],
+            },
+        )
+        return result
 
 
 def _find_visible_request(requests: list[InteractionRequest], request_id: str) -> InteractionRequest:
