@@ -35,5 +35,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 5ce80d8: Deadline expiration marks pending requests `expired` and emits deterministic `request.expired` events with request correlation metadata for frontend timeout displays.
 - e228ebc: Phase 4 assisted seats create LLM suggestions as explicit `assist.*` events; approval and editing submit through `GameSession.submit(source="human")` so suggestions never bypass normal validation.
 - e228ebc: Approval actions are represented as `LegalOption` metadata primitives rather than a new request/submission type, keeping generated games on the existing author-facing contract.
-- PENDING: Phase 5 starts with a final-only complex-orders reference game over existing barrier requests, documenting draft/final revision support as a core gap before changing runtime semantics.
-- PENDING: Order sets are represented as a general `LegalOption` metadata primitive, not as game-specific core concepts.
+- c8a1451: Phase 5 starts with a final-only complex-orders reference game over existing barrier requests, documenting draft/final revision support as a core gap before changing runtime semantics.
+- c8a1451: Order sets are represented as a general `LegalOption` metadata primitive, not as game-specific core concepts.
