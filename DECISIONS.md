@@ -27,5 +27,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 6b83876: Hanabi Lite is the first Phase 2 hidden-information reference game; own card identities and deck cards are truth-state private while other players' visible card identities may be projected for player/LLM audiences.
 - 9b764c8: Phase 2 introduces card and hint legal-option primitives as metadata helpers on `LegalOption`, keeping generated games on the existing `LegalOptions` contract while making hidden-information affordances explicit.
 - 9b764c8: Phase 2 validation uses `deepdiff` for mutation diagnostics and scans both visible state and visible messages for declared private values.
-- PENDING: Phase 3 storage uses explicit `SessionSnapshot` serialization and restore helpers rather than replaying submissions for reconnect, so browser refresh can recover pending runtime request IDs exactly.
-- PENDING: The first Phase 3 store is an async JSON file store that implements the store protocol without adding database dependencies before the web adapter needs them.
+- a323a88: Phase 3 storage uses explicit `SessionSnapshot` serialization and restore helpers rather than replaying submissions for reconnect, so browser refresh can recover pending runtime request IDs exactly.
+- a323a88: The first Phase 3 store is an async JSON file store that implements the store protocol without adding database dependencies before the web adapter needs them.
