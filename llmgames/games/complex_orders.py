@@ -91,7 +91,7 @@ class ComplexOrdersKernel:
                     code="order_set_already_submitted",
                     message="This player has already submitted a final order set for the current turn.",
                     path=["actor_id"],
-                    hint="Draft/final revision support is not part of this reference game yet.",
+                    hint="Submit drafts with intent='draft' before sending one final order set.",
                 )
             ]
 

@@ -803,9 +803,9 @@ Must demonstrate:
 - legal hint options
 - LLM prompt privacy checks
 
-### Diplomacy-Style Orders Spike
+### Complex Orders Spike
 
-Later spike, not a complete game.
+Later spike, not a complete game and not game-specific core vocabulary.
 
 Must demonstrate:
 
@@ -959,7 +959,7 @@ Goal: pressure-test large simultaneous order surfaces and batch resolution.
 
 Deliverables:
 
-- Diplomacy-style orders spike
+- complex simultaneous-orders spike
 - order-set legal option primitive
 - draft/final submissions
 - batch resolution event structure
