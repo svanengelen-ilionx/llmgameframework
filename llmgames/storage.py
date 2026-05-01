@@ -7,6 +7,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, Field
 
+from llmgames.clock import Clock
 from llmgames.models import GameConfig, GameEventSpec, InteractionRequest, Submission
 from llmgames.rules import RulesKernel
 from llmgames.runtime import GameSession
@@ -103,12 +104,12 @@ def snapshot_session(session: GameSession) -> SessionSnapshot:
     )
 
 
-def restore_session(kernel: RulesKernel, snapshot: SessionSnapshot) -> GameSession:
+def restore_session(kernel: RulesKernel, snapshot: SessionSnapshot, *, clock: Clock | None = None) -> GameSession:
     if kernel.game_id != snapshot.game_id:
         raise ValueError(
             f"Snapshot game_id={snapshot.game_id!r} cannot be restored with kernel game_id={kernel.game_id!r}."
         )
-    session = GameSession(kernel, snapshot.config, seed=snapshot.seed, session_id=snapshot.session_id)
+    session = GameSession(kernel, snapshot.config, seed=snapshot.seed, session_id=snapshot.session_id, clock=clock)
     session.state = kernel.state_model.model_validate(snapshot.state)
     session.status = snapshot.status
     session.event_seq = snapshot.event_seq

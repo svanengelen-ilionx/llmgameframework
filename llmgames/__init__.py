@@ -1,3 +1,4 @@
+from llmgames.clock import Clock, ManualClock, SystemClock
 from llmgames.models import (
     Audience,
     GameConfig,
@@ -27,6 +28,7 @@ from llmgames.web import CreateSessionRequest, SubmitRequest, create_game_app, c
 
 __all__ = [
     "Audience",
+    "Clock",
     "GameConfig",
     "GameEventSpec",
     "GameResult",
@@ -34,6 +36,7 @@ __all__ = [
     "LegalOption",
     "LegalOptions",
     "Message",
+    "ManualClock",
     "Player",
     "Projection",
     "RequestMode",
@@ -45,6 +48,7 @@ __all__ = [
     "Submission",
     "GameSession",
     "SubmitResult",
+    "SystemClock",
     "JSONFileSessionStore",
     "SessionSnapshot",
     "SessionStore",

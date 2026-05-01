@@ -5,8 +5,8 @@ from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-RequestMode: TypeAlias = Literal["single", "barrier"]
-RequestStatus: TypeAlias = Literal["pending", "resolved", "cancelled"]
+RequestMode: TypeAlias = Literal["single", "barrier", "timer"]
+RequestStatus: TypeAlias = Literal["pending", "resolved", "cancelled", "expired"]
 SubmissionSource: TypeAlias = Literal[
     "human", "llm", "scripted", "timer", "system", "moderator", "replay"
 ]
@@ -57,6 +57,7 @@ class Audience(ContractModel):
 class RulesContext(ContractModel):
     config: GameConfig
     current_event_seq: int = 0
+    current_time: datetime | None = None
 
 
 class LegalOption(ContractModel):
@@ -114,6 +115,7 @@ class RequestSpec(ContractModel):
     mode: RequestMode = "single"
     input_schema: dict[str, Any]
     legal_options: LegalOptions | None = None
+    deadline_at: datetime | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -126,6 +128,7 @@ class InteractionRequest(ContractModel):
     mode: RequestMode
     input_schema: dict[str, Any]
     legal_options: LegalOptions | None = None
+    deadline_at: datetime | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     status: RequestStatus
     correlation_id: str
