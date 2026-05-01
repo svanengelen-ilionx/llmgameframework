@@ -1,3 +1,4 @@
+from llmgames.games.split_or_steal import SplitOrStealKernel, SplitOrStealState
 from llmgames.games.tic_tac_toe import TicTacToeKernel, TicTacToeState
 
-__all__ = ["TicTacToeKernel", "TicTacToeState"]
+__all__ = ["SplitOrStealKernel", "SplitOrStealState", "TicTacToeKernel", "TicTacToeState"]

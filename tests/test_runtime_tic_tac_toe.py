@@ -9,7 +9,7 @@ async def test_tic_tac_toe_session_advances_requests() -> None:
     session = GameSession(TicTacToeKernel(), _config())
 
     await session.start()
-    projection = await session.projection(Audience.public())
+    projection = await session.projection(Audience.player("alice"))
 
     assert projection.status == "running"
     assert projection.visible_requests[0].id == "req_1"
@@ -26,7 +26,7 @@ async def test_tic_tac_toe_session_advances_requests() -> None:
     assert first.submission.id == "sub_1"
     assert first.submission.status == "accepted"
 
-    next_projection = await session.projection(Audience.public())
+    next_projection = await session.projection(Audience.player("bob"))
     assert next_projection.visible_state["board"][0][0] == "X"
     assert next_projection.visible_requests[0].id == "req_2"
     assert next_projection.visible_requests[0].spec_key == "place_mark:bob"

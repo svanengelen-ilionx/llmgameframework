@@ -144,16 +144,21 @@ class GameSession:
         submission.status = "accepted"
         self._submissions.append(submission)
         self._accepted_by_idempotency[idempotency_key_tuple] = submission
-        self._resolve_after_acceptance([request], [submission])
+        self._resolve_after_acceptance()
         return SubmitResult(accepted=True, submission=submission, issues=game_issues)
 
     async def advance(self) -> None:
         self._require_started()
         self._refresh_requests(resolved_keys=set())
 
-    def _resolve_after_acceptance(
-        self, requests: list[InteractionRequest], submissions: list[Submission]
-    ) -> None:
+    def _resolve_after_acceptance(self) -> None:
+        requests = [request for request in self._requests if request.status == "pending"]
+        request_ids = {request.id for request in requests}
+        submissions = [
+            submission
+            for submission in self._submissions
+            if submission.status == "accepted" and submission.request_id in request_ids
+        ]
         transition = self.kernel.resolve(self.state, requests, submissions, self._ctx())
         if not isinstance(transition.new_state, self.kernel.state_model):
             raise TypeError("kernel.resolve() returned an invalid state type")
@@ -238,7 +243,7 @@ class GameSession:
     def _visible_requests(self, audience: Audience) -> list[InteractionRequest]:
         pending = [request for request in self._requests if request.status == "pending"]
         if audience.kind in {"public", "moderator", "debug"}:
-            return pending
+            return [request for request in pending if request.actor_id is None]
         if audience.kind in {"player", "llm"}:
             return [
                 request
