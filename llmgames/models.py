@@ -11,6 +11,7 @@ SubmissionSource: TypeAlias = Literal[
     "human", "llm", "scripted", "timer", "system", "moderator", "replay"
 ]
 SubmissionStatus: TypeAlias = Literal["received", "accepted", "rejected"]
+SubmissionIntent: TypeAlias = Literal["draft", "final"]
 IssueSeverity: TypeAlias = Literal["error", "warning"]
 AudienceKind: TypeAlias = Literal["public", "player", "llm", "moderator", "debug"]
 
@@ -174,6 +175,7 @@ class Submission(ContractModel):
     source: SubmissionSource
     payload: dict[str, Any]
     idempotency_key: str
+    intent: SubmissionIntent = "final"
     correlation_id: str
     submitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: SubmissionStatus = "received"

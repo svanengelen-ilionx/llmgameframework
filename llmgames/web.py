@@ -7,7 +7,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from llmgames.models import Audience, GameConfig, GameEventSpec
+from llmgames.models import Audience, GameConfig, GameEventSpec, SubmissionIntent
 from llmgames.rules import RulesKernel
 from llmgames.runtime import GameSession
 from llmgames.storage import SessionStore, restore_session, snapshot_session
@@ -24,6 +24,7 @@ class SubmitRequest(BaseModel):
     actor_id: str | None = None
     idempotency_key: str
     source: str = "human"
+    intent: SubmissionIntent = "final"
 
 
 def create_game_router(kernel: RulesKernel, store: SessionStore) -> APIRouter:
@@ -57,6 +58,7 @@ def create_game_router(kernel: RulesKernel, store: SessionStore) -> APIRouter:
             actor_id=request.actor_id,
             idempotency_key=request.idempotency_key,
             source=request.source,
+            intent=request.intent,
         )
         await store.save(snapshot_session(session))
         return result.model_dump(mode="json")

@@ -37,3 +37,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - e228ebc: Approval actions are represented as `LegalOption` metadata primitives rather than a new request/submission type, keeping generated games on the existing author-facing contract.
 - c8a1451: Phase 5 starts with a final-only complex-orders reference game over existing barrier requests, documenting draft/final revision support as a core gap before changing runtime semantics.
 - c8a1451: Order sets are represented as a general `LegalOption` metadata primitive, not as game-specific core concepts.
+- PENDING: Phase 5 draft/final support uses a general `Submission.intent` field; draft submissions are accepted and recorded without resolving, while final submissions remain on the normal validation and resolution path.
+- PENDING: Runtime resolution passes accepted final submissions only to kernels, allowing draft revisions without making kernels filter historical draft submissions.

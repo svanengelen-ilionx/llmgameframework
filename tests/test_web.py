@@ -1,3 +1,4 @@
+from llmgames.games import ComplexOrdersKernel, TicTacToeKernel
 import json
 
 import httpx
@@ -60,6 +61,30 @@ async def test_sse_event_stream_resumes_from_cursor(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_debug_events_are_filtered_from_public_sse(tmp_path) -> None:
+
+
+    @pytest.mark.asyncio
+    async def test_submission_endpoint_accepts_draft_intent(tmp_path) -> None:
+        app = create_game_app(ComplexOrdersKernel(), JSONFileSessionStore(tmp_path))
+        client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver")
+
+        await client.post("/sessions", json={"session_id": "web_1", "config": _three_player_config_json()})
+        result = await client.post(
+            "/sessions/web_1/requests/req_1/submissions",
+            json={
+                "payload": {"orders": [{"unit_id": "alice:unit_1", "action": "hold"}]},
+                "actor_id": "alice",
+                "idempotency_key": "alice-draft",
+                "intent": "draft",
+            },
+        )
+        projection = await client.get("/sessions/web_1/projection", params={"audience_kind": "player", "player_id": "alice"})
+
+        assert result.status_code == 200
+        assert result.json()["accepted"] is True
+        assert result.json()["submission"]["intent"] == "draft"
+        assert projection.json()["visible_requests"][0]["spec_key"] == "order_set:alice:turn_1"
+        await client.aclose()
     store = JSONFileSessionStore(tmp_path)
     session = GameSession(TicTacToeKernel(), _config(), session_id="web_1")
     await session.start()
@@ -89,6 +114,16 @@ def _config() -> GameConfig:
 
 def _config_json() -> dict:
     return _config().model_dump(mode="json")
+
+
+def _three_player_config_json() -> dict:
+    return GameConfig(
+        players=[
+            Player(id="alice", name="Alice"),
+            Player(id="bob", name="Bob"),
+            Player(id="carol", name="Carol"),
+        ]
+    ).model_dump(mode="json")
 
 
 def _event_data(stream_text: str) -> dict:

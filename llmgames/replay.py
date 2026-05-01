@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from llmgames.models import Audience, GameConfig, Projection, Submission
+from llmgames.models import Audience, GameConfig, Projection, Submission, SubmissionIntent
 from llmgames.rules import RulesKernel
 from llmgames.runtime import GameSession
 
@@ -15,6 +16,7 @@ class ScriptedSubmission(BaseModel):
     idempotency_key: str
     request_spec_key: str | None = None
     source: str = "scripted"
+    intent: SubmissionIntent = "final"
 
 
 class ComparableTrace(BaseModel):
@@ -42,7 +44,7 @@ class ReplayResult(BaseModel):
 async def run_scripted_session(
     kernel: RulesKernel,
     config: GameConfig,
-    script: list[ScriptedSubmission | dict[str, Any]],
+    script: Sequence[ScriptedSubmission | dict[str, Any]],
     *,
     seed: int = 0,
 ) -> SessionSummary:
@@ -58,6 +60,7 @@ async def run_scripted_session(
             actor_id=scripted.actor_id,
             idempotency_key=scripted.idempotency_key,
             source=scripted.source,
+            intent=scripted.intent,
         )
         if not result.accepted:
             issue_text = "; ".join(issue.message for issue in result.issues)
@@ -92,6 +95,7 @@ async def replay_session(
             actor_id=submission.actor_id,
             idempotency_key=submission.idempotency_key,
             source="replay",
+            intent=submission.intent,
         )
         if not result.accepted:
             issue_text = "; ".join(issue.message for issue in result.issues)
@@ -132,6 +136,7 @@ async def comparable_trace(session: GameSession) -> ComparableTrace:
                 "actor_id": submission.actor_id,
                 "payload": submission.payload,
                 "idempotency_key": submission.idempotency_key,
+                "intent": submission.intent,
                 "status": submission.status,
             }
             for submission in session.submissions

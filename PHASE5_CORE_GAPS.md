@@ -31,3 +31,7 @@ Keep Phase 5's first reference game final-only: each actor submits one complete 
 ### Recommendation
 
 Implement the final-only complex-orders spike first. Defer runtime draft/final semantics until the reference game and tests make the required general contract clearer.
+
+### Resolution
+
+Approved for implementation. Draft/final support is implemented as a general `Submission.intent` field. Draft submissions are accepted and recorded without resolving requests; final submissions retain the existing validation and resolution path. Resolution considers accepted final submissions only, so reference games can permit draft revisions without game-specific runtime behavior.

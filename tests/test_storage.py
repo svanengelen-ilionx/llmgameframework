@@ -60,6 +60,30 @@ async def test_snapshot_reload_preserves_comparable_trace(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_snapshot_reload_preserves_submission_intent(tmp_path) -> None:
+    from llmgames.games import ComplexOrdersKernel
+
+    session = GameSession(ComplexOrdersKernel(), _three_player_config())
+    await session.start()
+    await session.submit(
+        "req_1",
+        {"orders": [{"unit_id": "alice:unit_1", "action": "hold"}]},
+        actor_id="alice",
+        idempotency_key="alice-draft",
+        intent="draft",
+    )
+    store = JSONFileSessionStore(tmp_path)
+
+    await store.save(snapshot_session(session))
+    loaded = await store.load(session.session_id)
+    assert loaded is not None
+    restored = restore_session(ComplexOrdersKernel(), loaded)
+
+    assert restored.submissions[0].intent == "draft"
+    assert restored.requests[0].status == "pending"
+
+
+@pytest.mark.asyncio
 async def test_store_lists_and_deletes_session_ids(tmp_path) -> None:
     session = GameSession(TicTacToeKernel(), _config(), session_id="game_one")
     await session.start()
@@ -96,3 +120,13 @@ async def test_restore_rejects_wrong_kernel(tmp_path) -> None:
 
 def _config() -> GameConfig:
     return GameConfig(players=[Player(id="alice", name="Alice"), Player(id="bob", name="Bob")])
+
+
+def _three_player_config() -> GameConfig:
+    return GameConfig(
+        players=[
+            Player(id="alice", name="Alice"),
+            Player(id="bob", name="Bob"),
+            Player(id="carol", name="Carol"),
+        ]
+    )
