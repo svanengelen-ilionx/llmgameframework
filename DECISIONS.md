@@ -29,5 +29,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 9b764c8: Phase 2 validation uses `deepdiff` for mutation diagnostics and scans both visible state and visible messages for declared private values.
 - a323a88: Phase 3 storage uses explicit `SessionSnapshot` serialization and restore helpers rather than replaying submissions for reconnect, so browser refresh can recover pending runtime request IDs exactly.
 - a323a88: The first Phase 3 store is an async JSON file store that implements the store protocol without adding database dependencies before the web adapter needs them.
-- PENDING: Phase 3 web adapters are built as FastAPI router/app helpers over a `SessionStore`; each request restores, mutates when needed, and re-saves snapshots rather than keeping hidden process-local session state.
-- PENDING: Phase 3 SSE support replays stored game events after an event cursor with audience filtering, using deterministic event list order as the SSE event ID sequence.
+- 3a24e14: Phase 3 web adapters are built as FastAPI router/app helpers over a `SessionStore`; each request restores, mutates when needed, and re-saves snapshots rather than keeping hidden process-local session state.
+- 3a24e14: Phase 3 SSE support replays stored game events after an event cursor with audience filtering, using deterministic event list order as the SSE event ID sequence.
