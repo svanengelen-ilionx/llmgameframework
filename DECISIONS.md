@@ -19,3 +19,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - b46cf0a: `validate_kernel()` submits one generated candidate for each current request in a validation step before refreshing requests, so simultaneous barrier games can be validated without single-request turn assumptions.
 - b46cf0a: Simple `private_paths` validation applies to non-terminal projections only; terminal reveal states may intentionally expose formerly hidden outcome data.
 - 33f5063: Private-path validation diagnostics report both the audience key and the visible projection path where the private value was found, while still limiting Phase 1 checks to direct value leaks.
+- PENDING: Prompt context is built from a runtime projection plus the selected request, never from truth state, and includes only visible state/messages, input schema, legal options, and request metadata.
+- PENDING: Fake LLM responder output enters the game exclusively through `GameSession.submit(source="llm")`; schema and game-legality failures are represented by the normal `SubmitResult` rejection path.
