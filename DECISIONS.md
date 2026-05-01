@@ -25,5 +25,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - e98e020: The real Phase 1 provider adapter is a generic HTTP JSON adapter that accepts `PromptContext` and returns structured `LLMSubmission`; vendor-specific chat/completion formats remain outside the core runtime.
 - 6b83876: Phase 2 privacy metadata supports wildcard paths and audience-player placeholders so hidden-information games can declare public/player/LLM visibility rules without custom validation hooks.
 - 6b83876: Hanabi Lite is the first Phase 2 hidden-information reference game; own card identities and deck cards are truth-state private while other players' visible card identities may be projected for player/LLM audiences.
-- PENDING: Phase 2 introduces card and hint legal-option primitives as metadata helpers on `LegalOption`, keeping generated games on the existing `LegalOptions` contract while making hidden-information affordances explicit.
-- PENDING: Phase 2 validation uses `deepdiff` for mutation diagnostics and scans both visible state and visible messages for declared private values.
+- 9b764c8: Phase 2 introduces card and hint legal-option primitives as metadata helpers on `LegalOption`, keeping generated games on the existing `LegalOptions` contract while making hidden-information affordances explicit.
+- 9b764c8: Phase 2 validation uses `deepdiff` for mutation diagnostics and scans both visible state and visible messages for declared private values.
