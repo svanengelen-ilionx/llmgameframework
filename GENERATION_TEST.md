@@ -6,6 +6,8 @@ This document describes how to test whether an LLM can generate a medium-complex
 
 Give the LLM these files as context:
 
+- `docs/AGENT_GAME_AUTHORING.md`
+- `docs/AGENT_PROMPT_TEMPLATE.md`
 - `README.md`
 - `AUTHORING.md`
 - `GENERATION_TEST.md`
@@ -17,6 +19,8 @@ Give the LLM these files as context:
 - `tests/test_responders.py`
 
 Do not give the LLM permission to edit `llmgames` core files during the test.
+
+For autonomous coding agents, prefer giving [docs/AGENT_GAME_AUTHORING.md](docs/AGENT_GAME_AUTHORING.md) as the single canonical instruction link and [docs/AGENT_PROMPT_TEMPLATE.md](docs/AGENT_PROMPT_TEMPLATE.md) as the user prompt wrapper.
 
 ## Generation Prompt
 

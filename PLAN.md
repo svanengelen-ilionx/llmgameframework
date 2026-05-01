@@ -1,5 +1,7 @@
 # Phase Zero Ready Runtime Plan
 
+> Status: historical implementation plan. The repository has implemented the roadmap through Phase 5 and now uses [README.md](README.md), [AUTHORING.md](AUTHORING.md), [GENERATION_TEST.md](GENERATION_TEST.md), and [docs/AGENT_GAME_AUTHORING.md](docs/AGENT_GAME_AUTHORING.md) as current user-facing guidance. This file is kept as design history and may describe earlier phase constraints that are no longer current.
+
 ## Executive Summary
 
 This plan is the implementation-ready refinement of the verifiable interaction runtime design. It keeps the central architecture:
@@ -124,10 +126,10 @@ llmgames/
     validation.py     # validate_kernel and diagnostics
     replay.py         # deterministic replay
     testing.py        # public test helpers
-    responders.py     # scripted and later LLM responders
-    llm.py            # async LLM provider and prompt context, later
-    storage.py        # stores, later
-    web.py            # FastAPI/SSE helpers, later
+    responders.py     # scripted, LLM, and assisted-seat responders
+    llm.py            # async LLM provider and prompt context
+    storage.py        # snapshot stores
+    web.py            # FastAPI/SSE helpers
     games/
         tic_tac_toe.py
         split_or_steal.py
@@ -999,7 +1001,7 @@ Then build:
 - basic replay
 - tests for complete Tic-Tac-Toe play and replay
 
-Do not build yet:
+Originally out of first sprint scope:
 
 - OpenRouter
 - FastAPI

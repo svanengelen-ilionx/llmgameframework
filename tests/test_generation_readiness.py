@@ -22,7 +22,6 @@ def test_generation_readiness_docs_exist_and_cover_llm_players() -> None:
     required_files = [
         "README.md",
         "AUTHORING.md",
-        "GENERATION_READINESS_PLAN.md",
         "GENERATION_TEST.md",
         "docs/AGENT_GAME_AUTHORING.md",
         "docs/AGENT_PROMPT_TEMPLATE.md",
@@ -121,3 +120,16 @@ def test_internal_plan_no_longer_names_specific_order_game_as_core_target() -> N
     plan = (ROOT / "PLAN.md").read_text(encoding="utf-8")
 
     assert "Diplomacy-style" not in plan
+    assert "historical implementation plan" in plan
+
+
+def test_completed_generation_readiness_plan_was_removed() -> None:
+    assert not (ROOT / "GENERATION_READINESS_PLAN.md").exists()
+
+
+def test_phase5_gap_report_is_marked_resolved_and_historical() -> None:
+    gap_report = (ROOT / "PHASE5_CORE_GAPS.md").read_text(encoding="utf-8")
+
+    assert gap_report.startswith("# Resolved Phase 5 Core Gap Report")
+    assert "historical report" in gap_report
+    assert "Implemented resolution" in gap_report
