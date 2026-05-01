@@ -15,4 +15,4 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 46a8709: Public projections hide actor-specific pending requests; player/LLM audiences see their own requests, while public requests remain visible to public/moderator/debug audiences.
 - 46a8709: Runtime resolution after an accepted submission passes all currently pending requests plus accepted submissions for those requests, allowing barrier kernels to resolve only after enough submissions are present.
 - 46a8709: Phase 0B `assert_projection_private()` scans projection state and messages, not request affordances, because legal options may legitimately name allowable choices while unrevealed submitted choices must stay out of projected state/messages.
-- PENDING: Replay divergence reports the first nested comparable-trace path, using dotted object keys and bracketed list indices, while still avoiding a full deep-diff dependency in Phase 0.
+- 91cd7ec: Replay divergence reports the first nested comparable-trace path, using dotted object keys and bracketed list indices, while still avoiding a full deep-diff dependency in Phase 0.
