@@ -33,5 +33,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 3a24e14: Phase 3 SSE support replays stored game events after an event cursor with audience filtering, using deterministic event list order as the SSE event ID sequence.
 - 5ce80d8: Phase 4 timers add an injectable clock, `timer` request mode, and `deadline_at` request metadata; expiration is driven by runtime advancement rather than kernel side effects.
 - 5ce80d8: Deadline expiration marks pending requests `expired` and emits deterministic `request.expired` events with request correlation metadata for frontend timeout displays.
-- PENDING: Phase 4 assisted seats create LLM suggestions as explicit `assist.*` events; approval and editing submit through `GameSession.submit(source="human")` so suggestions never bypass normal validation.
-- PENDING: Approval actions are represented as `LegalOption` metadata primitives rather than a new request/submission type, keeping generated games on the existing author-facing contract.
+- e228ebc: Phase 4 assisted seats create LLM suggestions as explicit `assist.*` events; approval and editing submit through `GameSession.submit(source="human")` so suggestions never bypass normal validation.
+- e228ebc: Approval actions are represented as `LegalOption` metadata primitives rather than a new request/submission type, keeping generated games on the existing author-facing contract.
