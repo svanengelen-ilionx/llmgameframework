@@ -22,6 +22,7 @@ from llmgames.models import (
 )
 from llmgames.rules import RulesKernel
 from llmgames.runtime import GameSession, SubmitResult
+from llmgames.storage import JSONFileSessionStore, SessionSnapshot, SessionStore, restore_session, snapshot_session
 
 __all__ = [
     "Audience",
@@ -43,8 +44,13 @@ __all__ = [
     "Submission",
     "GameSession",
     "SubmitResult",
+    "JSONFileSessionStore",
+    "SessionSnapshot",
+    "SessionStore",
     "TransitionResult",
     "ValidationIssue",
     "card_option",
     "hint_option",
+    "restore_session",
+    "snapshot_session",
 ]
