@@ -18,4 +18,4 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 91cd7ec: Replay divergence reports the first nested comparable-trace path, using dotted object keys and bracketed list indices, while still avoiding a full deep-diff dependency in Phase 0.
 - b46cf0a: `validate_kernel()` submits one generated candidate for each current request in a validation step before refreshing requests, so simultaneous barrier games can be validated without single-request turn assumptions.
 - b46cf0a: Simple `private_paths` validation applies to non-terminal projections only; terminal reveal states may intentionally expose formerly hidden outcome data.
-- PENDING: Private-path validation diagnostics report both the audience key and the visible projection path where the private value was found, while still limiting Phase 1 checks to direct value leaks.
+- 33f5063: Private-path validation diagnostics report both the audience key and the visible projection path where the private value was found, while still limiting Phase 1 checks to direct value leaks.
