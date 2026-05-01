@@ -18,6 +18,8 @@ from llmgames import (
     Submission,
     TransitionResult,
     ValidationIssue,
+    card_option,
+    hint_option,
 )
 
 Color = Literal["red", "blue"]
@@ -224,16 +226,25 @@ def _legal_options(state: HanabiLiteState, actor_id: str, ctx: RulesContext) -> 
                 continue
             card = state.hands[player.id][0]
             options.append(
-                LegalOption(
+                hint_option(
                     value=f"clue:{player.id}:color:{card.color}",
                     label=f"Tell {player.name} about {card.color} cards",
                     payload={"action": "clue", "target_id": player.id, "clue_type": "color", "value": card.color},
+                    target_id=player.id,
+                    clue_type="color",
                 )
             )
             break
     if state.hands.get(actor_id):
-        options.append(LegalOption(value="play:0", label="Play slot 0", payload={"action": "play", "slot": 0}))
-        options.append(LegalOption(value="discard:0", label="Discard slot 0", payload={"action": "discard", "slot": 0}))
+        options.append(card_option(value="play:0", label="Play slot 0", payload={"action": "play", "slot": 0}, slot=0))
+        options.append(
+            card_option(
+                value="discard:0",
+                label="Discard slot 0",
+                payload={"action": "discard", "slot": 0},
+                slot=0,
+            )
+        )
     return LegalOptions(
         kind="hanabi_action",
         options=options,

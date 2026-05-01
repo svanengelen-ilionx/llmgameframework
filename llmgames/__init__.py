@@ -17,6 +17,8 @@ from llmgames.models import (
     Submission,
     TransitionResult,
     ValidationIssue,
+    card_option,
+    hint_option,
 )
 from llmgames.rules import RulesKernel
 from llmgames.runtime import GameSession, SubmitResult
@@ -43,4 +45,6 @@ __all__ = [
     "SubmitResult",
     "TransitionResult",
     "ValidationIssue",
+    "card_option",
+    "hint_option",
 ]

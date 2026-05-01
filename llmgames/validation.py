@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Literal
 
+from deepdiff import DeepDiff
 from jsonschema import ValidationError as JsonSchemaValidationError
 from jsonschema import validate as validate_json_schema
 from pydantic import BaseModel
@@ -153,9 +154,11 @@ def _call_current_requests(
 
     if _dump(state) != before:
         issues.append(
-            KernelIssue(
+            _mutation_issue(
                 method="current_requests",
-                message="current_requests() mutated its input state.",
+                subject="input state",
+                before=before,
+                after=_dump(state),
                 hint="Return request specs without changing the state object.",
             )
         )
@@ -260,10 +263,14 @@ def _call_validate_submission(
         issues.append(_exception_issue("validate_submission", exc))
         return None
     if _dump(state) != before_state or _dump(request) != before_request or _dump(submission) != before_submission:
+        before = {"state": before_state, "request": before_request, "submission": before_submission}
+        after = {"state": _dump(state), "request": _dump(request), "submission": _dump(submission)}
         issues.append(
-            KernelIssue(
+            _mutation_issue(
                 method="validate_submission",
-                message="validate_submission() mutated state, request, or submission.",
+                subject="state, request, or submission",
+                before=before,
+                after=after,
                 hint="Return ValidationIssue objects without changing inputs.",
             )
         )
@@ -296,9 +303,11 @@ def _call_resolve(
         return None
     if _dump(state) != before:
         issues.append(
-            KernelIssue(
+            _mutation_issue(
                 method="resolve",
-                message="resolve() mutated its input state.",
+                subject="input state",
+                before=before,
+                after=_dump(state),
                 hint="Use state.model_copy(deep=True) before applying accepted submissions.",
             )
         )
@@ -351,9 +360,11 @@ def _validate_projection(
             return
         if _dump(state) != before:
             issues.append(
-                KernelIssue(
+                _mutation_issue(
                     method="project_state",
-                    message="project_state() mutated its input state.",
+                    subject="input state",
+                    before=before,
+                    after=_dump(state),
                     hint="Build visible_state separately from truth state.",
                 )
             )
@@ -384,7 +395,7 @@ def _validate_private_paths(
         for private_value in _values_at_path(state_data, private_path):
             if _is_empty_private_value(private_value):
                 continue
-            visible_path = _find_value_path(projection.visible_state, private_value, path="visible_state")
+            visible_path = _find_value_path(_projection_visible_data(projection), private_value, path="projection")
             if visible_path is not None:
                 issues.append(
                     KernelIssue(
@@ -437,6 +448,13 @@ def _values_at_path(data: Any, path: str) -> list[Any]:
 
 def _is_empty_private_value(value: Any) -> bool:
     return value is None or value == {} or value == []
+
+
+def _projection_visible_data(projection: StateProjection) -> dict[str, Any]:
+    return {
+        "visible_state": projection.visible_state,
+        "visible_messages": [message.model_dump(mode="json") for message in projection.visible_messages],
+    }
 
 
 def _find_value_path(container: Any, value: Any, *, path: str) -> str | None:
@@ -505,6 +523,26 @@ def _dump(value: Any) -> Any:
 
 def _has_error(issues: list[KernelIssue]) -> bool:
     return any(issue.severity == "error" for issue in issues)
+
+
+def _mutation_issue(method: str, subject: str, before: Any, after: Any, hint: str) -> KernelIssue:
+    return KernelIssue(
+        method=method,
+        message=f"{method}() mutated {subject} at {_first_diff_path(before, after)}.",
+        hint=hint,
+    )
+
+
+def _first_diff_path(before: Any, after: Any) -> str:
+    diff = DeepDiff(before, after, ignore_order=False)
+    for values in diff.values():
+        if isinstance(values, dict) and values:
+            return next(iter(values.keys()))
+        if isinstance(values, set) and values:
+            return next(iter(values))
+        if isinstance(values, list) and values:
+            return str(values[0])
+    return "$"
 
 
 def _exception_issue(method: str, exc: Exception) -> KernelIssue:
