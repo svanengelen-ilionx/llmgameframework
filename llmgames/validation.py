@@ -337,7 +337,12 @@ def _call_resolve(
 def _validate_projection(
     kernel: RulesKernel, state: BaseModel, ctx: RulesContext, issues: list[KernelIssue]
 ) -> None:
-    for audience in [Audience.public(), *(Audience.player(player.id) for player in ctx.config.players)]:
+    audiences = [
+        Audience.public(),
+        *(Audience.player(player.id) for player in ctx.config.players),
+        *(Audience.llm(player.id) for player in ctx.config.players),
+    ]
+    for audience in audiences:
         before = _dump(state)
         try:
             projection = kernel.project_state(state, audience, ctx)
@@ -373,38 +378,61 @@ def _validate_private_paths(
 ) -> None:
     if projection.result is not None or audience.kind not in {"public", "player", "llm"}:
         return
-    private_paths = _private_paths(state)
+    state_data = state.model_dump(mode="json")
+    private_paths = _private_paths(state, audience)
     for private_path in private_paths:
-        private_value = _value_at_path(state.model_dump(mode="json"), private_path)
-        if _is_empty_private_value(private_value):
-            continue
-        visible_path = _find_value_path(projection.visible_state, private_value, path="visible_state")
-        if visible_path is not None:
-            issues.append(
-                KernelIssue(
-                    method="project_state",
-                    message=(
-                        f"project_state(audience='{_audience_key(audience)}') leaked private path "
-                        f"'{private_path}' at projection path '{visible_path}'."
-                    ),
-                    hint="Hide declared private values from non-terminal public/player/LLM projections.",
+        for private_value in _values_at_path(state_data, private_path):
+            if _is_empty_private_value(private_value):
+                continue
+            visible_path = _find_value_path(projection.visible_state, private_value, path="visible_state")
+            if visible_path is not None:
+                issues.append(
+                    KernelIssue(
+                        method="project_state",
+                        message=(
+                            f"project_state(audience='{_audience_key(audience)}') leaked private path "
+                            f"'{private_path}' at projection path '{visible_path}'."
+                        ),
+                        hint="Hide declared private values from non-terminal public/player/LLM projections.",
+                    )
                 )
-            )
-            return
+                return
 
 
-def _private_paths(state: BaseModel) -> list[str]:
+def _private_paths(state: BaseModel, audience: Audience) -> list[str]:
     extra = getattr(state, "model_config", {}).get("json_schema_extra") or {}
-    return list(extra.get("private_paths", []))
+    paths = list(extra.get("private_paths", []))
+    by_audience = extra.get("private_paths_by_audience", {})
+    if isinstance(by_audience, dict):
+        paths.extend(by_audience.get(audience.kind, []))
+    return [_format_private_path(path, audience) for path in paths]
 
 
-def _value_at_path(data: Any, path: str) -> Any:
-    value = data
+def _format_private_path(path: str, audience: Audience) -> str:
+    return path.replace("{audience.player_id}", audience.player_id or "")
+
+
+def _values_at_path(data: Any, path: str) -> list[Any]:
+    values = [data]
     for part in path.split("."):
-        if not isinstance(value, dict) or part not in value:
-            return None
-        value = value[part]
-    return value
+        next_values: list[Any] = []
+        for value in values:
+            if part == "*":
+                if isinstance(value, dict):
+                    next_values.extend(value.values())
+                elif isinstance(value, list):
+                    next_values.extend(value)
+                continue
+            if isinstance(value, dict) and part in value:
+                next_values.append(value[part])
+            elif isinstance(value, list) and part.isdigit():
+                index = int(part)
+                if 0 <= index < len(value):
+                    next_values.append(value[index])
+        values = next_values
+        if not values:
+            break
+    return values
 
 
 def _is_empty_private_value(value: Any) -> bool:

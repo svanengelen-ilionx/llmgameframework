@@ -114,6 +114,15 @@ class PlayerOnlyLeakyProjectionKernel(LeakyProjectionKernel):
         return StateProjection(visible_state={"safe": True})
 
 
+class LLMOnlyLeakyProjectionKernel(LeakyProjectionKernel):
+    game_id = "llm_only_leaky_projection"
+
+    def project_state(self, state: PrivateState, audience: Audience, ctx: RulesContext) -> StateProjection:
+        if audience.kind == "llm":
+            return StateProjection(visible_state={"nested": {"hidden": state.hidden}})
+        return StateProjection(visible_state={"safe": True})
+
+
 class TerminalRevealProjectionKernel(LeakyProjectionKernel):
     game_id = "terminal_reveal_projection"
 
@@ -168,6 +177,17 @@ def test_player_private_path_projection_leak_names_player_audience() -> None:
     assert any(
         issue.method == "project_state"
         and "audience='player:alice'" in issue.message
+        and "projection path 'visible_state.nested.hidden'" in issue.message
+        for issue in issues
+    )
+
+
+def test_llm_private_path_projection_leak_names_llm_audience() -> None:
+    issues = validate_kernel(LLMOnlyLeakyProjectionKernel())
+
+    assert any(
+        issue.method == "project_state"
+        and "audience='llm:alice'" in issue.message
         and "projection path 'visible_state.nested.hidden'" in issue.message
         for issue in issues
     )
