@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from llmgames import (
     Audience,
@@ -16,6 +16,12 @@ from llmgames.testing import validate_kernel
 
 class TinyState(BaseModel):
     value: int = 0
+
+
+class PrivateState(BaseModel):
+    hidden: dict[str, str] = Field(default_factory=lambda: {"alice": "steal"})
+
+    model_config = ConfigDict(json_schema_extra={"private_paths": ["hidden"]})
 
 
 class DuplicateRequestKernel:
@@ -78,6 +84,20 @@ class MutatingResolveKernel(DuplicateRequestKernel):
         return TransitionResult(new_state=state, resolved_request_keys=[requests[0].spec_key])
 
 
+class LeakyProjectionKernel(DuplicateRequestKernel):
+    game_id = "leaky_projection"
+    state_model = PrivateState
+
+    def initial_state(self, config: GameConfig, ctx: RulesContext) -> PrivateState:
+        return PrivateState()
+
+    def current_requests(self, state: PrivateState, ctx: RulesContext) -> list[RequestSpec]:
+        return []
+
+    def project_state(self, state: PrivateState, audience: Audience, ctx: RulesContext) -> StateProjection:
+        return StateProjection(visible_state={"hidden": state.hidden})
+
+
 def test_duplicate_request_keys_are_diagnostic() -> None:
     issues = validate_kernel(DuplicateRequestKernel())
 
@@ -88,3 +108,9 @@ def test_resolve_mutation_is_diagnostic() -> None:
     issues = validate_kernel(MutatingResolveKernel())
 
     assert any(issue.method == "resolve" and "mutated" in issue.message for issue in issues)
+
+
+def test_private_path_projection_leak_is_diagnostic() -> None:
+    issues = validate_kernel(LeakyProjectionKernel())
+
+    assert any(issue.method == "project_state" and "private path 'hidden'" in issue.message for issue in issues)

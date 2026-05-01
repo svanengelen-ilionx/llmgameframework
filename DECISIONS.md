@@ -16,3 +16,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 46a8709: Runtime resolution after an accepted submission passes all currently pending requests plus accepted submissions for those requests, allowing barrier kernels to resolve only after enough submissions are present.
 - 46a8709: Phase 0B `assert_projection_private()` scans projection state and messages, not request affordances, because legal options may legitimately name allowable choices while unrevealed submitted choices must stay out of projected state/messages.
 - 91cd7ec: Replay divergence reports the first nested comparable-trace path, using dotted object keys and bracketed list indices, while still avoiding a full deep-diff dependency in Phase 0.
+- PENDING: `validate_kernel()` submits one generated candidate for each current request in a validation step before refreshing requests, so simultaneous barrier games can be validated without single-request turn assumptions.
+- PENDING: Simple `private_paths` validation applies to non-terminal projections only; terminal reveal states may intentionally expose formerly hidden outcome data.
