@@ -21,5 +21,5 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 33f5063: Private-path validation diagnostics report both the audience key and the visible projection path where the private value was found, while still limiting Phase 1 checks to direct value leaks.
 - 7abb4c4: Prompt context is built from a runtime projection plus the selected request, never from truth state, and includes only visible state/messages, input schema, legal options, and request metadata.
 - 7abb4c4: Fake LLM responder output enters the game exclusively through `GameSession.submit(source="llm")`; schema and game-legality failures are represented by the normal `SubmitResult` rejection path.
-- PENDING: Phase 1 runtime events are stored as `GameEventSpec` records with deterministic sequence advancement; LLM orchestration emits debug-visible `llm.*` events correlated by request correlation ID.
-- PENDING: The real Phase 1 provider adapter is a generic HTTP JSON adapter that accepts `PromptContext` and returns structured `LLMSubmission`; vendor-specific chat/completion formats remain outside the core runtime.
+- e98e020: Phase 1 runtime events are stored as `GameEventSpec` records with deterministic sequence advancement; LLM orchestration emits debug-visible `llm.*` events correlated by request correlation ID.
+- e98e020: The real Phase 1 provider adapter is a generic HTTP JSON adapter that accepts `PromptContext` and returns structured `LLMSubmission`; vendor-specific chat/completion formats remain outside the core runtime.
