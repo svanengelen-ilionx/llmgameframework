@@ -101,6 +101,20 @@ def hint_option(
     return LegalOption(value=value, label=label, payload=payload, metadata=option_metadata)
 
 
+def approval_option(
+    action: str,
+    *,
+    label: str | None = None,
+    payload: dict[str, Any] | None = None,
+    suggestion_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> LegalOption:
+    option_metadata = {**(metadata or {}), "primitive": "approval", "action": action}
+    if suggestion_id is not None:
+        option_metadata["suggestion_id"] = suggestion_id
+    return LegalOption(value=action, label=label, payload=payload, metadata=option_metadata)
+
+
 class LegalOptions(ContractModel):
     kind: str
     options: list[LegalOption] = Field(default_factory=list)
