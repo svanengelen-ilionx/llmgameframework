@@ -19,7 +19,14 @@ def test_package_readme_points_to_author_facing_readme() -> None:
 
 
 def test_generation_readiness_docs_exist_and_cover_llm_players() -> None:
-    required_files = ["README.md", "AUTHORING.md", "GENERATION_READINESS_PLAN.md", "GENERATION_TEST.md"]
+    required_files = [
+        "README.md",
+        "AUTHORING.md",
+        "GENERATION_READINESS_PLAN.md",
+        "GENERATION_TEST.md",
+        "docs/AGENT_GAME_AUTHORING.md",
+        "docs/AGENT_PROMPT_TEMPLATE.md",
+    ]
     for file_name in required_files:
         text = (ROOT / file_name).read_text(encoding="utf-8")
         assert "llmgames" in text
@@ -28,6 +35,38 @@ def test_generation_readiness_docs_exist_and_cover_llm_players() -> None:
     assert "LLMResponder" in generation_test
     assert "FakeLLMProvider" in generation_test
     assert "HTTPJSONLLMProvider" in generation_test
+
+
+def test_agent_game_authoring_doc_is_self_contained_for_autonomous_agents() -> None:
+    instructions = (ROOT / "docs" / "AGENT_GAME_AUTHORING.md").read_text(encoding="utf-8")
+    required_phrases = [
+        "autonomous AI coding agent",
+        "Do not clone or inspect the framework repository",
+        "Do not edit files inside the `llmgames` package",
+        "python -m pip install llmgames",
+        "Public Imports",
+        "Kernel Skeleton",
+        "Player Experience Requirements",
+        "validate_kernel()",
+        "run_scripted_session()",
+        "replay_session()",
+        "FakeLLMProvider",
+        "LLMResponder",
+        "Audience.llm",
+        "Done Criteria",
+    ]
+
+    for phrase in required_phrases:
+        assert phrase in instructions
+
+
+def test_agent_prompt_template_reinforces_user_experience_and_no_core_edits() -> None:
+    prompt_template = (ROOT / "docs" / "AGENT_PROMPT_TEMPLATE.md").read_text(encoding="utf-8")
+
+    assert "Do not clone, inspect, or modify the llmgames framework repository" in prompt_template
+    assert "at least one LLM player" in prompt_template
+    assert "good end-user experience" in prompt_template
+    assert "test commands and results" in prompt_template
 
 
 def test_public_exports_include_generation_authoring_surface() -> None:

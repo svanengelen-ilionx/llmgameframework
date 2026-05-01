@@ -84,6 +84,8 @@ class MyKernel:
 
 See [AUTHORING.md](AUTHORING.md) for the complete authoring contract and [GENERATION_TEST.md](GENERATION_TEST.md) for the medium-complexity LLM generation test, including LLM players.
 
+If you want to hand an autonomous AI coding agent one GitHub link and ask it to create a game without editing this framework, use [docs/AGENT_GAME_AUTHORING.md](docs/AGENT_GAME_AUTHORING.md). A copy-paste user prompt is available in [docs/AGENT_PROMPT_TEMPLATE.md](docs/AGENT_PROMPT_TEMPLATE.md).
+
 ## Reference Games
 
 Reference kernels live in `llmgames.games`:
