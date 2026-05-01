@@ -1,0 +1,90 @@
+from pydantic import BaseModel
+
+from llmgames import (
+    Audience,
+    GameConfig,
+    InteractionRequest,
+    RequestSpec,
+    RulesContext,
+    StateProjection,
+    Submission,
+    TransitionResult,
+    ValidationIssue,
+)
+from llmgames.testing import validate_kernel
+
+
+class TinyState(BaseModel):
+    value: int = 0
+
+
+class DuplicateRequestKernel:
+    game_id = "duplicate_request"
+    state_model = TinyState
+
+    def initial_state(self, config: GameConfig, ctx: RulesContext) -> TinyState:
+        return TinyState()
+
+    def current_requests(self, state: TinyState, ctx: RulesContext) -> list[RequestSpec]:
+        return [
+            RequestSpec(key="act:alice", kind="act", actor_id="alice", input_schema={"type": "object"}),
+            RequestSpec(key="act:alice", kind="act", actor_id="alice", input_schema={"type": "object"}),
+        ]
+
+    def validate_submission(
+        self,
+        state: TinyState,
+        request: InteractionRequest,
+        submission: Submission,
+        ctx: RulesContext,
+    ) -> list[ValidationIssue]:
+        return []
+
+    def resolve(
+        self,
+        state: TinyState,
+        requests: list[InteractionRequest],
+        submissions: list[Submission],
+        ctx: RulesContext,
+    ) -> TransitionResult:
+        return TransitionResult(new_state=state)
+
+    def project_state(self, state: TinyState, audience: Audience, ctx: RulesContext) -> StateProjection:
+        return StateProjection(visible_state={"value": state.value})
+
+
+class MutatingResolveKernel(DuplicateRequestKernel):
+    game_id = "mutating_resolve"
+
+    def current_requests(self, state: TinyState, ctx: RulesContext) -> list[RequestSpec]:
+        return [
+            RequestSpec(
+                key="act:alice",
+                kind="act",
+                actor_id="alice",
+                input_schema={"type": "object"},
+                legal_options={"kind": "custom", "examples": [{}]},
+            )
+        ]
+
+    def resolve(
+        self,
+        state: TinyState,
+        requests: list[InteractionRequest],
+        submissions: list[Submission],
+        ctx: RulesContext,
+    ) -> TransitionResult:
+        state.value = 1
+        return TransitionResult(new_state=state, resolved_request_keys=[requests[0].spec_key])
+
+
+def test_duplicate_request_keys_are_diagnostic() -> None:
+    issues = validate_kernel(DuplicateRequestKernel())
+
+    assert any(issue.method == "current_requests" and "duplicate" in issue.message for issue in issues)
+
+
+def test_resolve_mutation_is_diagnostic() -> None:
+    issues = validate_kernel(MutatingResolveKernel())
+
+    assert any(issue.method == "resolve" and "mutated" in issue.message for issue in issues)
