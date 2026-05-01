@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from llmgames.models import (
     Audience,
     GameConfig,
+    GameEventSpec,
     InteractionRequest,
     Projection,
     RequestSpec,
@@ -44,6 +45,7 @@ class GameSession:
         self.event_seq = 0
         self._request_seq = 0
         self._submission_seq = 0
+        self._events: list[GameEventSpec] = []
         self._requests: list[InteractionRequest] = []
         self._submissions: list[Submission] = []
         self._accepted_by_idempotency: dict[tuple[str, str], Submission] = {}
@@ -55,6 +57,10 @@ class GameSession:
     @property
     def submissions(self) -> list[Submission]:
         return list(self._submissions)
+
+    @property
+    def events(self) -> list[GameEventSpec]:
+        return list(self._events)
 
     async def start(self) -> None:
         ctx = self._ctx()
@@ -151,6 +157,18 @@ class GameSession:
         self._require_started()
         self._refresh_requests(resolved_keys=set())
 
+    def record_event(
+        self,
+        kind: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        visibility: str = "debug",
+    ) -> GameEventSpec:
+        event = GameEventSpec(kind=kind, payload=payload or {}, visibility=visibility)
+        self.event_seq += 1
+        self._events.append(event)
+        return event
+
     def _resolve_after_acceptance(self) -> None:
         requests = [request for request in self._requests if request.status == "pending"]
         request_ids = {request.id for request in requests}
@@ -165,7 +183,7 @@ class GameSession:
 
         self.state = transition.new_state
         for event in transition.events:
-            self.event_seq += 1
+            self.record_event(event.kind, event.payload, visibility=event.visibility)
 
         resolved_keys = set(transition.resolved_request_keys)
         for request in self._requests:

@@ -16,3 +16,10 @@ Use `PENDING` for new decisions until the commit hash exists, then replace it wi
 - 46a8709: Runtime resolution after an accepted submission passes all currently pending requests plus accepted submissions for those requests, allowing barrier kernels to resolve only after enough submissions are present.
 - 46a8709: Phase 0B `assert_projection_private()` scans projection state and messages, not request affordances, because legal options may legitimately name allowable choices while unrevealed submitted choices must stay out of projected state/messages.
 - 91cd7ec: Replay divergence reports the first nested comparable-trace path, using dotted object keys and bracketed list indices, while still avoiding a full deep-diff dependency in Phase 0.
+- b46cf0a: `validate_kernel()` submits one generated candidate for each current request in a validation step before refreshing requests, so simultaneous barrier games can be validated without single-request turn assumptions.
+- b46cf0a: Simple `private_paths` validation applies to non-terminal projections only; terminal reveal states may intentionally expose formerly hidden outcome data.
+- 33f5063: Private-path validation diagnostics report both the audience key and the visible projection path where the private value was found, while still limiting Phase 1 checks to direct value leaks.
+- 7abb4c4: Prompt context is built from a runtime projection plus the selected request, never from truth state, and includes only visible state/messages, input schema, legal options, and request metadata.
+- 7abb4c4: Fake LLM responder output enters the game exclusively through `GameSession.submit(source="llm")`; schema and game-legality failures are represented by the normal `SubmitResult` rejection path.
+- e98e020: Phase 1 runtime events are stored as `GameEventSpec` records with deterministic sequence advancement; LLM orchestration emits debug-visible `llm.*` events correlated by request correlation ID.
+- e98e020: The real Phase 1 provider adapter is a generic HTTP JSON adapter that accepts `PromptContext` and returns structured `LLMSubmission`; vendor-specific chat/completion formats remain outside the core runtime.

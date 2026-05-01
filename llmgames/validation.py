@@ -49,6 +49,8 @@ def validate_kernel(
 
     _validate_projection(kernel, state, ctx, issues)
 
+    request_sequence = 0
+    submission_sequence = 0
     for step in range(max(1, min(runs, max_steps))):
         requests = _call_current_requests(kernel, state, ctx, issues)
         if requests is None:
@@ -59,60 +61,48 @@ def validate_kernel(
         if _has_error(issues):
             return issues
 
-        request = _promote_request(requests[0], session_id="validation", sequence=step + 1)
-        payload = _example_payload(requests[0].legal_options)
-        if payload is None:
-            issues.append(
-                KernelIssue(
-                    severity="warning",
-                    method="current_requests",
-                    message=f"RequestSpec.key='{requests[0].key}' has no legal-options example the validator can submit.",
-                    hint="Add legal_options examples or use a standard option kind with concrete options.",
-                    seed=seed,
-                )
-            )
-            break
+        promoted_requests: list[InteractionRequest] = []
+        accepted_submissions: list[Submission] = []
+        for spec in requests:
+            request_sequence += 1
+            request = _promote_request(spec, session_id="validation", sequence=request_sequence)
+            promoted_requests.append(request)
+            payload = _validated_example_payload(spec, request, issues, seed)
+            if payload is None:
+                return issues if _has_error(issues) else issues
 
-        try:
-            validate_json_schema(instance=payload, schema=request.input_schema)
-        except JsonSchemaValidationError as exc:
-            issues.append(
-                KernelIssue(
-                    method="current_requests",
-                    message=f"Generated example for RequestSpec.key='{requests[0].key}' does not match input_schema: {exc.message}.",
-                    hint="Align legal_options examples with input_schema.",
-                    seed=seed,
-                )
+            submission_sequence += 1
+            submission = Submission(
+                id=f"validation_sub_{submission_sequence}",
+                request_id=request.id,
+                actor_id=request.actor_id,
+                source="scripted",
+                payload=payload,
+                idempotency_key=f"validation_{submission_sequence}",
+                correlation_id=request.correlation_id,
+                submitted_at=datetime.now(timezone.utc),
             )
+            validation_errors = _call_validate_submission(
+                kernel, state, request, submission, ctx, issues
+            )
+            if validation_errors is None or _has_error(issues):
+                return issues
+            if any(issue.severity == "error" for issue in validation_errors):
+                issues.append(
+                    KernelIssue(
+                        method="validate_submission",
+                        message=f"Generated legal example for RequestSpec.key='{request.spec_key}' was rejected by validate_submission().",
+                        hint="Make legal_options examples describe actually legal submissions for the current state.",
+                        seed=seed,
+                    )
+                )
+                return issues
+            accepted_submissions.append(submission)
+
+        if not accepted_submissions:
             return issues
 
-        submission = Submission(
-            id=f"validation_sub_{step + 1}",
-            request_id=request.id,
-            actor_id=request.actor_id,
-            source="scripted",
-            payload=payload,
-            idempotency_key=f"validation_{step + 1}",
-            correlation_id=request.correlation_id,
-            submitted_at=datetime.now(timezone.utc),
-        )
-        validation_errors = _call_validate_submission(
-            kernel, state, request, submission, ctx, issues
-        )
-        if validation_errors is None or _has_error(issues):
-            return issues
-        if any(issue.severity == "error" for issue in validation_errors):
-            issues.append(
-                KernelIssue(
-                    method="validate_submission",
-                    message=f"Generated legal example for RequestSpec.key='{request.spec_key}' was rejected by validate_submission().",
-                    hint="Make legal_options examples describe actually legal submissions for the current state.",
-                    seed=seed,
-                )
-            )
-            return issues
-
-        transition = _call_resolve(kernel, state, [request], [submission], ctx, issues)
+        transition = _call_resolve(kernel, state, promoted_requests, accepted_submissions, ctx, issues)
         if transition is None:
             return issues
         state = transition.new_state
@@ -218,6 +208,39 @@ def _call_current_requests(
                 )
             )
     return first
+
+
+def _validated_example_payload(
+    spec: RequestSpec,
+    request: InteractionRequest,
+    issues: list[KernelIssue],
+    seed: int,
+) -> dict[str, Any] | None:
+    payload = _example_payload(spec.legal_options)
+    if payload is None:
+        issues.append(
+            KernelIssue(
+                severity="warning",
+                method="current_requests",
+                message=f"RequestSpec.key='{spec.key}' has no legal-options example the validator can submit.",
+                hint="Add legal_options examples or use a standard option kind with concrete options.",
+                seed=seed,
+            )
+        )
+        return None
+    try:
+        validate_json_schema(instance=payload, schema=request.input_schema)
+    except JsonSchemaValidationError as exc:
+        issues.append(
+            KernelIssue(
+                method="current_requests",
+                message=f"Generated example for RequestSpec.key='{spec.key}' does not match input_schema: {exc.message}.",
+                hint="Align legal_options examples with input_schema.",
+                seed=seed,
+            )
+        )
+        return None
+    return payload
 
 
 def _call_validate_submission(
@@ -339,6 +362,77 @@ def _validate_projection(
                 )
             )
             return
+        _validate_private_paths(state, projection, audience, issues)
+
+
+def _validate_private_paths(
+    state: BaseModel,
+    projection: StateProjection,
+    audience: Audience,
+    issues: list[KernelIssue],
+) -> None:
+    if projection.result is not None or audience.kind not in {"public", "player", "llm"}:
+        return
+    private_paths = _private_paths(state)
+    for private_path in private_paths:
+        private_value = _value_at_path(state.model_dump(mode="json"), private_path)
+        if _is_empty_private_value(private_value):
+            continue
+        visible_path = _find_value_path(projection.visible_state, private_value, path="visible_state")
+        if visible_path is not None:
+            issues.append(
+                KernelIssue(
+                    method="project_state",
+                    message=(
+                        f"project_state(audience='{_audience_key(audience)}') leaked private path "
+                        f"'{private_path}' at projection path '{visible_path}'."
+                    ),
+                    hint="Hide declared private values from non-terminal public/player/LLM projections.",
+                )
+            )
+            return
+
+
+def _private_paths(state: BaseModel) -> list[str]:
+    extra = getattr(state, "model_config", {}).get("json_schema_extra") or {}
+    return list(extra.get("private_paths", []))
+
+
+def _value_at_path(data: Any, path: str) -> Any:
+    value = data
+    for part in path.split("."):
+        if not isinstance(value, dict) or part not in value:
+            return None
+        value = value[part]
+    return value
+
+
+def _is_empty_private_value(value: Any) -> bool:
+    return value is None or value == {} or value == []
+
+
+def _find_value_path(container: Any, value: Any, *, path: str) -> str | None:
+    if container == value:
+        return path
+    if isinstance(container, dict):
+        for key, item in container.items():
+            found = _find_value_path(item, value, path=f"{path}.{key}")
+            if found is not None:
+                return found
+        return None
+    if isinstance(container, list):
+        for index, item in enumerate(container):
+            found = _find_value_path(item, value, path=f"{path}[{index}]")
+            if found is not None:
+                return found
+        return None
+    return None
+
+
+def _audience_key(audience: Audience) -> str:
+    if audience.player_id is None:
+        return audience.kind
+    return f"{audience.kind}:{audience.player_id}"
 
 
 def _promote_request(spec: RequestSpec, *, session_id: str, sequence: int) -> InteractionRequest:
